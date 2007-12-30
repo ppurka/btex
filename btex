@@ -2,16 +2,37 @@
 
 ###   This program is used to  compile latex files and output ps/pdf files  ###
 
-###                     Changelog                         ###
-# 04/28/2007    Enabled method to convert ps to pdf         #
-# 02/??/2007    Enabled an option to support beamer         #
-# 01/??/2007    Enabled a "non-stop" mode                   #
-# <=01/01/2007  Umpteen number of untracked changes         #
+        ###                     Changelog                         ###
+        # 12/25/2007    Allow one to execute it by clicking on the  #
+        #               file in rox                                 #
+        #               Better help text                            #
+        # 12/20/2007    Amazing article online enables me to get    #
+        #               the status of each part of a pipe, so now   #
+        #               error checking works very nice even with    #
+        #               the grep command (in QUIET mode)            #
+        # 11/24/2007    Rudimentary autocompile mode                #
+        # 11/20/2007    Pretty output :P                            #
+        #               New pattern for grep to capture more errors #
+        # 10/10/2007    Enabled a quiet mode (reduces junk o/p)     #
+        #               Enabled Toggling the quiet mode             #
+        #               Reorganized menu and help text              #
+        # 04/28/2007    Enabled method to convert ps to pdf         #
+        # 02/??/2007    Enabled an option to support beamer         #
+        # 01/??/2007    Enabled a "non-stop" mode                   #
+        # <=01/01/2007  Umpteen number of untracked changes         #
+        #-----------------------------------------------------------#
 
-###                         TODO                          ###
-# Enable a quiet mode, where only latex errors are shown
-#   need to look into --interaction nonstopmode 
-#   and make the latex compilation handling more modular
+        ###                         TODO (04/28/2007)             ###
+        # Enable a quiet mode, where only latex errors are shown    #
+        #   need to look into --interaction nonstopmode             #
+        #   and make the latex compilation handling more modular    #
+        # The above is done, but without --interaction nonstopmode  #
+        # would be interesting to see if it can be improved.        #
+        #                                                           #
+        # Enable an auto mode, where the latex file will be         #
+        # automatically compiled whenever the timestamp of the tex  #
+        # file changes.                                             #
+        #-----------------------------------------------------------#
 
 ###   Set the colors that will be used   ### {{{
 yellow="\E[1;33m"
@@ -51,8 +72,10 @@ PS_VIEWER="gv -watch -spartan"
 DVI_VIEWER="xdvi"
 PDF_VIEWER="xpdf"
 RECURSIVE=0;
-LAUNCHED_GV=;
+PREV_MODE=;
 NON_STOP=;
+QUIET=;
+COUNT=1;
 # Possible modes: POSTSCRIPT, ASK_POSTSCRIPT, NO_POSTSCRIPT, PDF : Default is below
 MODE="ASK_POSTSCRIPT"; 
 
@@ -62,18 +85,20 @@ help(){ #{{{
     info "This program is used to compile latex files and output ps/pdf files"
     info "Usage:     $( basename ${0} ) [<options>] [<filename>.tex]";
     info "Options:"
-    info "-h | --help            This help text";
-    info "-nc| --no-color        Do not use color in output";
-    info "-ns| --non-stop        Do not exit program even if there is an error in latex compilation";
-    info "-p | --postscript      Assume \"yes\" for postscript output";
-    info "-n | --no-postscript   Do not output postscript file";
+    info "-a | --acroread        Use acrobat reader as pdf viewer in lieu of xpdf"
+    info "-b | --beamer          Beamer mode: disable -tletter option in dvips"
     info "-d | --pdf             Output a pdf file,- this uses pdflatex";
+    info "-h | --help            This help text";
+    info "-n | --no-postscript   Do not output postscript file";
+    info "-nc| --no-color        Do not use color in output";
+    info "-ns| --non-stop        Do not exit program even if latex gives errors"
+    info "-p | --postscript      Assume \"yes\" for postscript output";
+    info "-q | --quiet           Do not print all the output latex spews out"
     info "-r | --recursive       Recursively compile the source";
-    info "-b | --beamer          While using beamer, disable -tletter option from dvips"
-    info "-a | --acroread        Use acrobat reader as the pdf viewer in lieu of xpdf"
-#    info "-q | --quiet           Do not print all the output latex spews out"
     echo;
-    info "If no filename is given, then an interactive input prompt is provided";
+    info "If no filename is given, then an interactive input prompt is provided
+    ${underline}An example, when using beamer${normal}:
+    btex -b -d -r -q -ns # recursive, quiet, nonstop, using pdflatex & beamer";
     echo;
 } #}}}
 
@@ -217,22 +242,8 @@ check() {
     return 0;
 }
     
-
-compile_ps() { #{{{
-    info "Creating ${filename%\.*}.ps ...";echo;
-    dvips ${DVIPS_PAPER_OPTIONS} -q -o "${filename%\.*}.ps" "${filename%\.*}.dvi";
-#    if [[ $LAUNCHED_GV -eq 0 ]]; then
-#        infon "Launch ${PS_VIEWER%%\ *}? [enter/n or y]:";
-#        read -n 1 answer;echo;
-#        if [[ "$answer" = "y" || "$answer" = "Y" ]]; then
-#            LAUNCHED_GV=1;
-#            $PS_VIEWER "${filename%\.*}.ps" &
-#        fi
-#    fi
-} #}}}
-
 #echo $-
-#[[ -z "$1" && ${-/i/} = $- ]] && xterm -hold -e $0 -h && exit
+[[ $DISPLAY && -z "$@" ]] && ! tty -s && ( xterm -hold -e $0 -h && exit )
 
 if [[ -n "$@" ]]; then
     for i in "$@"
@@ -259,11 +270,79 @@ if [[ -n "$@" ]]; then
         -r | --recursive)   RECURSIVE=1; ;;
         -b | --beamer)      DVIPS_PAPER_OPTIONS="";; 
         -a | --acroread)    PDF_VIEWER="acroread";;
+        -q | --quiet)       QUIET=1;;
         -*)     help; die "${red}$i${normal}: Invalid Option!\n"; ;;
         *)      filename="$i"; ;;
         esac
     done
 fi
+
+show_menu() { # {{{
+    echo; echo;
+    info "Want to continue with another compile?\n
+\tEnter/${green}Y${normal}: Yes\t\t\t\
+${green}N${normal}: No\n\t\
+${green}P${normal}: Toggle Postscript output\t\
+${green}L${normal}: Launch ${PS_VIEWER%%\ *}\n\t\
+${green}D${normal}: Toggle Pdf Output\t\t\
+${green}X${normal}: Launch ${DVI_VIEWER}\n\t\
+${green}2${normal}: Toggle PS to PDF output\t\
+${green}F${normal}: Launch ${PDF_VIEWER}\n\t\
+${green}Q${normal}: Toggle Quiet mode\t\t\
+${green}A${normal}: Enable Autocompile mode"
+    infon "Give an option ([Y]/N/P/D/L/X/Q/A):"
+}
+# }}}
+
+compile_ps() { #{{{
+    if [[ $QUIET ]]; then
+        latex "${filename}"  >&1 | grep --color -A 11 '^! .*';
+        # echo ${PIPESTATUS[@]} gives the exit status of each part of pipe
+        [[ ${PIPESTATUS[0]} -ne 0 && -z "$NON_STOP" ]] && \
+            die "${filename}: Error in latex compilation"; 
+    else
+        latex "${filename}"
+        [[ $? -ne 0 && -z "$NON_STOP" ]] && \
+            die "${filename}: Error in latex compilation"; 
+    fi
+
+    case $1 in
+        ask)echo; infon "CONTINUE with dvips?[enter/y or n]:";
+            read -n 1 answer;echo;;
+        only_dvi) answer="n";;
+        *)  answer="y";;
+    esac
+    case $answer in
+        "" | [yY]*) infon "Creating $file.ps ... ";#echo;
+            dvips ${DVIPS_PAPER_OPTIONS} -q -o "$file.ps" "$file.dvi"
+            ([[ $? -ne 0 ]] && echo -e "${red}Failed!${normal}") ||\
+                echo -e "${green}Done!${normal}";;
+        *) ;; # Do nothing
+    esac
+} #}}}
+
+compile_pdf() { # {{{
+    info "Converting the (newer) eps images to pdf ..."
+    find *.eps | while read i; do
+        if [[ "${i%\.*}.pdf" -ot "$i" ]]; then
+            infon "Converting ${bold}$i${normal} to ${bold}${i%\.*}.pdf${normal} ... "
+            epstopdf $i --outfile="${i%\.*}.pdf"
+            ([[ $? -ne 0 ]] && echo -e "${red}Failed!${normal}") ||\
+                echo -e "${green}Done!${normal}"
+        fi
+    done
+    if [[ "$QUIET" ]]; then
+        pdflatex "${filename}" >&1 | grep --color -A 11 '^! .*' -;
+        # echo ${PIPESTATUS[@]} gives the exit status of each part of pipe
+        [[ ${PIPESTATUS[0]} -ne 0 && -z $NON_STOP ]] && \
+            die "${filename}: pdflatex compilation failed"
+    else
+        pdflatex "$filename"
+        [[ $? -ne 0 && -z $NON_STOP ]] && \
+            die "${filename}: pdflatex compilation failed"
+    fi
+}
+# }}}
 
 # Some error checking
 check latex;
@@ -283,146 +362,86 @@ if [[ ! -f "${filename}" || "${filename/ /}" != "${filename}" ]]; then
     echo; die "${filename} does not exist\n\tHint: Do not enter filenames with spaces in them\n";
 fi
 
-# Change to the directory containing the tex file, else a lot of stuff will go awry
+# Change to the directory containing the tex file, else a lot will go awry
 cd "$(dirname "$filename")"
+file="${filename%\.*}";
 
 while true; do
 
+    # The autocompile mode is basically a bad hack :(
+    if [[ $MODE = "AUTO_COMPILE" && $PREV_MODE != "AUTO_COMPILE" ]]; then
+        if inotifywait -t 300 -qq ${filename}; then
+            info "Autocompile # $COUNT/5"
+            MODE=$PREV_MODE; PREV_MODE=AUTO_COMPILE;
+        else
+            MODE=NO_COMPILE;
+        fi
+    elif [[ $PREV_MODE = "AUTO_COMPILE" ]]; then
+        MODE=AUTO_COMPILE; PREV_MODE=; COUNT=1;
+    fi
+
     case $MODE in
-    ASK_POSTSCRIPT)
-        latex "${filename}";
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "${filename}: Error in latex compilation"; 
-        echo; infon "CONTINUE with dvips?[enter/y or n]:";
-        read -n 1 answer;echo;
-        case $answer in
-        "" | [yY]*) compile_ps; ;;
-        *) ;; # Do nothing
-        esac ;;
-        
-    POSTSCRIPT)
-        latex "${filename}";
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "${filename}: Error in latex compilation";
-        compile_ps; ;;
-
-    NO_POSTSCRIPT)
-        latex "${filename}";
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "${filename}: Error in latex compilation"; ;;
-        
-    PDF) 
-        info "Converting the eps images to pdf ..."
-        EPSFILES="$(find *.eps -newer ${filename%\.*}.pdf)"
-        for i in *.eps; do
-            if echo $EPSFILES | grep -q -s $i; then
-                info "Converting ${bold}$i${normal} to ${bold}${i%\.*}.pdf${normal}"
-                epstopdf $i --outfile="${i%\.*}.pdf"
-            fi
-        done
-        pdflatex "${filename}";
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "${filename}: pdflatex compilation failed"; ;;
-
-    LAUNCHED_GV) MODE=$LAUNCHED_GV; ;;
-    PS2PDF)
-        latex "${filename}";
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "${filename}: Error in latex compilation"; 
-        compile_ps;
-        info "Creating ${filename%\.*}.pdf from ${filename%\.*}.ps";
-        ps2pdf ${filename%\.*}.ps ;;
-
-    *)  ;;
+        ASK_POSTSCRIPT) compile_ps ask ;;
+        POSTSCRIPT)     compile_ps ;;
+        NO_POSTSCRIPT)  compile_ps only_dvi;;
+        PDF)            compile_pdf;;
+        NO_COMPILE) MODE=$PREV_MODE; ;;
+        PS2PDF)     compile_ps;
+            infon "Creating $file.pdf from $file.ps ... ";
+            ps2pdf $file.ps
+            ([[ $? -ne 0 ]] && echo -e "${red}Failed!${normal}") ||\
+                echo -e "${green}Done!${normal}" ;;
+        *)  ;;
     esac
+
+    # The hack to get autocompile mode working continues :(
+    if [[ $PREV_MODE = "AUTO_COMPILE" && $COUNT -lt 5 ]]; then
+        COUNT=$(( $COUNT+1 ));
+        PREV_MODE=$MODE; MODE=AUTO_COMPILE;
+        continue;
+    elif [[ $PREV_MODE = "AUTO_COMPILE" ]]; then
+        continue;
+    fi
 
     [[ $RECURSIVE -eq 0 ]] && break;
 
-    echo; echo;
-    info "Want to continue with another compile?"
-    info "\
-Enter/${green}Y${normal}: Yes\t\t\t\
-${green}N${normal}: No\n\t\
-${green}P${normal}: Toggle Postscript output\t\
-${green}D${normal}: Toggle Pdf Output\n\t\
-${green}L${normal}: Launch ${PS_VIEWER%%\ *}\t\t\t\
-${green}X${normal}: Launch ${DVI_VIEWER}\n\t\
-${green}2${normal}: Toggle PS to PDF output\t\
-${green}F${normal}: Launch ${PDF_VIEWER}"
-    infon "Give an option ([Y]/N/P/D/L/X):"
+    show_menu
     read -n 1 answer; echo;
-    case $answer in
-    "" | [yY])  continue; ;;
-    [nNqQ])   break; ;;
-    [pP])   if [[ "$MODE" = "POSTSCRIPT" || "$MODE" = "ASK_POSTSCRIPT" ]]; then
-                MODE="NO_POSTSCRIPT"; info "Postscript file will not be generated"; sleep 1.5;
-            else    MODE="POSTSCRIPT"; info "Postscript file will be automatically generated"; sleep 1.5;
-            fi ;;
+    case $answer in         # Options arranged alphabetically
+    2)      MODE="PS2PDF";;
+    [aA])   check inotifywait; PREV_MODE=$MODE; MODE=AUTO_COMPILE;
+            info "Autocompile mode ${bold}Enabled${normal}";;
     [dD])   if [[ "$MODE" = "PDF" ]]; then
                 MODE="ASK_POSTSCRIPT"; info "Pdf file will not be generated"; sleep 1.5;
             else    MODE="PDF"; info "Pdf file will be generated"; sleep 1.5;
             fi ;;
-    [lLoO]) if [[ -f "${filename%\.*}.ps" ]]; then 
-                $PS_VIEWER ${filename%\.*}.ps 2>/dev/null &
+    [fF])   $PDF_VIEWER $file.pdf >&/dev/null &
+            PREV_MODE=$MODE; MODE=NO_COMPILE; ;;
+    [lLoO]) if [[ -f "$file.ps" ]]; then 
+                $PS_VIEWER $file.ps 2>/dev/null &
                 [[ $? -ne 0 ]] && Err "Error in launching ${PS_VIEWER%%\ *}";
-            else    Err "${filename%\.*}.ps does not exist!";
+            else    Err "$file.ps does not exist!";
             fi 
-            LAUNCHED_GV=$MODE; MODE=LAUNCHED_GV; ;;
-    [xX])   if [[ -f "${filename%\.*}.dvi" ]]; then
-                $DVI_VIEWER ${filename%\.*}.dvi 2>/dev/null & # Don't want error messages to mess up terminal
-                [[ $? -ne 0 ]] && Err "Error in launching ${DVI_VIEWER}";
-            else    Err "${filename%\.*}.dvi does not exist!";
+            PREV_MODE=$MODE; MODE=NO_COMPILE; ;;
+    [nN])   break; ;;
+    [pP])   if [[ "$MODE" = "POSTSCRIPT" || "$MODE" = "ASK_POSTSCRIPT" ]]; then
+                MODE="NO_POSTSCRIPT"; info "Postscript file will not be generated"; sleep 1.5;
+            else    MODE="POSTSCRIPT"; info "Postscript file will be automatically generated"; sleep 1.5;
+            fi ;;
+    [qQ])   if [[ $QUIET ]]; then QUIET=""; echo;
+                info "Quiet mode ${bold}disabled${normal}";
+            else QUIET=1; echo; info "Quiet mode ${bold}enabled${normal}";
             fi
-            LAUNCHED_GV=$MODE; MODE=LAUNCHED_GV; ;;
-    2)      MODE="PS2PDF";;
-    [fF])   $PDF_VIEWER ${filename%\.*}.pdf;;
+            PREV_MODE=$MODE; MODE=NO_COMPILE; ;;
+    [xX])   if [[ -f "$file.dvi" ]]; then
+                $DVI_VIEWER $file.dvi >& /dev/null & # Don't want error messages to mess up terminal
+                [[ $? -ne 0 ]] && Err "Error in launching ${DVI_VIEWER}";
+            else    Err "$file.dvi does not exist!";
+            fi
+            PREV_MODE=$MODE; MODE=NO_COMPILE; ;;
+    "" | [yY])  continue; ;;
     *)      die "$answer: Invalid Option!"; ;;
     esac
 
 done
 
-
-#POSTSCRIPT=0;  # 2 == no postscript, 0 == postscript, but ask confirmation, 1 == compile to ps directly.
-#PDF=0;         # 0 == no pdf, 1 == pdf on
-#  Read the latex filename from interactive input ##{{{
-#read_filename() {
-#    clear;
-#    ls -1 | sed -ne "/^${INPUT_X}\(.*\)\.tex$/p"
-#    echo -e "\n\n\n$green^$normal---------------${green}Possible latex files$normal----------------------$green^\n\n\n$normal"
-#
-#    while true
-#    do
-#        # black on green
-#        if [[ ! -z "$INPUT_X" ]]; then
-#            echo -ne "  $yellow *$normal   Enter the latex filename [${INPUT_X}\033[00;30;42m${EXT}$normal ?]: ${INPUT_X}"
-#        else
-#            infon "Enter the latex filename:"
-#        fi
-#
-#        read -n 1 INPUT
-#
-#        if [[ -z "$INPUT" && ! -z "$INPUT_X" ]]; then
-#            filename="${INPUT_X}${EXT}";
-#            break;
-#        elif [[ -z "$INPUT" && -z "$INPUT_X" ]]; then
-#            Err "No filename provided";
-#            help;
-#            exit 1;
-#        fi
-#
-#        clear;
-#
-#        if [[ -z `echo -e "$INPUT" | grep -e "[[:print:]]"` ]]; then
-#            INPUT_X=`echo ${INPUT_X} | head -c -2`
-#        else
-#            INPUT_X="${INPUT_X}${INPUT}"
-#        fi
-#
-#        OUTPUT=`ls -1 | sed -ne "/^${INPUT_X}/p" | sed -ne "/\.tex$/p"`
-#        if [[ ! -z "${INPUT_X}" ]]; then
-#            echo "${OUTPUT}"
-#            EXT=`echo "${OUTPUT}" | head -n 1 | sed -e "s/^${INPUT_X}\(.*\)$/\1/"`;
-#        else
-#            #ls -1 | sed -ne "/^${INPUT_X}\(.*\)\.tex$/p"
-#            echo "${OUTPUT}"
-#        fi
-#            
-#        echo -e "\n\n\n$green^$normal---------------${green}Possible latex files$normal----------------------$green^\n\n\n$normal"
-#        
-#    done
-#} #}}}
