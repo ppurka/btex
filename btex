@@ -6,6 +6,9 @@
 
 
         ###                     Changelog                         ###
+        # 11/17/2008    Enabled autodetection of beamer in tex file #
+        #               Also, changed menu to show enable/disable   #
+        #               instead of the generic 'toggle'             #
         # 10/20/2008    Enabled both ps generation as well as pdf   #
         #               generation via pdflatex using one command   #
         #               There is also a command line switch for it  #
@@ -333,12 +336,15 @@ done
 
 show_menu() { # {{{
     echo; echo
-    local g=$green
-    local n=$normal
-    local auto warn inv
+    local g=$green n=$normal
+    local auto warn inv \
+        non_int="Enable" \
+        silnt="Enable Silent mode            " \
+        bmr="Enable Beamer mode            " \
+        bibtx="Enable"
     [[ $INOTIFYWAIT ]] && auto="    ${g}A${n}: Enable Autocompile mode\n"
-    [[ $SILENT ]] && warn="${g}W$n: Toggle output of warnings"
-    [[ $INVERSE_SEARCH_CAPABLE ]] && inv="\n    ${g}I$n: Toggle Inverse search"
+    [[ $SILENT ]] && warn="${g}W$n: Enable output of warnings"
+    [[ $INVERSE_SEARCH_CAPABLE ]] && inv="\n    ${g}I$n: Enable Inverse search"
 
     infon "${bold}Current mode$n:${blue}"
     case $MODE in
@@ -351,27 +357,48 @@ show_menu() { # {{{
     esac
     case $SILENT in
         _no-interaction_silent_nowarning) 
+            non_int="Disable"
+            silnt="Disable Silent mode           "
             echo -e "\t\t\tNon-interactive mode is enabled"
             echo -e "\t\t\tOnly errors in latex output are shown";;
         _no-interaction_nowarning)
+            non_int="Disable"
             echo -e "\t\t\tNon-interactive mode is enabled"
             echo -e "\t\t\tErrors in latex output are highlighted";;
         _silent_nowarning) 
+            silnt="Disable Silent mode           "
             echo -e "\t\t\tOnly errors in latex output are shown";;
         _no-interaction_silent)
+            non_int="Disable"
+            silnt="Disable Silent mode           "
+            warn="${warn/Enable/Disable}"
             echo -e "\t\t\tNon-interactive mode is enabled"
             echo -e "\t\t\tOnly errors/warnings in latex output are shown";;
         _no-interaction)
+            non_int="Disable"
+            warn="${warn/Enable/Disable}"
             echo -e "\t\t\tNon-interactive mode is enabled"
             echo -e "\t\t\tErrors/warnings in latex output are highlighted";;
         _silent) 
+            silnt="Disable Silent mode           "
+            warn="${warn/Enable/Disable}"
             echo -e "\t\t\tOnly errors/warnings in latex output are shown";;
         *)  ;;
     esac
 
-    [[ $INVERSE_SEARCH ]] && echo -e "\t\t\tInverse search is enabled"
-    [[ $BIBTEX ]] && echo -e "\t\t\tBibtex compilation is enabled"
-    [[ $DVIPS_PAPER_OPTIONS ]] || echo -e "\t\t\tBeamer mode is enabled"
+    [[ $INVERSE_SEARCH ]] && {
+        echo -e "\t\t\tInverse search is enabled"
+        inv="${inv/Enable/Disable}"
+    }
+    [[ $BIBTEX ]] && {
+        echo -e "\t\t\tBibtex compilation is enabled"
+        bibtx="Disable"
+    }
+        
+    [[ $DVIPS_PAPER_OPTIONS ]] || {
+        echo -e "\t\t\tBeamer mode is enabled"
+        bmr="Disable Beamer mode           "
+    }
     # This lower part has an ugly long string argument
     infon "Want to continue with another compile?
     Enter/${g}Y$n: Yes (Repeat compile)     ${g}N$n: No (${g}Q${n}uit)
@@ -379,10 +406,10 @@ show_menu() { # {{{
     ${g}D$n: Toggle Pdf Output              ${g}X$n: Launch ${DVI_VIEWER}
     ${g}2$n: Toggle PS to PDF output        ${g}F$n: Launch ${PDF_VIEWER}
     ${g}O$n: Toggle both PS and PDF output
-    ${g}E$n: Toggle Beamer mode             ${g}B$n: Toggle Bibtex compilation\
+    ${g}E$n: $bmr ${g}B$n: $bibtx Bibtex compilation \
 $inv
-    ${g}T$n: Toggle non-interactive compilation
-    ${g}S$n: Toggle Silent mode             $warn
+    ${g}T$n: $non_int non-interactive compilation
+    ${g}S$n: $silnt $warn
 $auto" # if auto is empty, this acts as a \n, o/w auto provides \n
 
     echo -ne " $yellow*$normal Give an option (2/"
@@ -586,6 +613,14 @@ fi
 [[ $filename = */* ]] && cd "${filename%\/*}"
 filename="${filename##*\/}"
 file="${filename%\.tex}"
+
+# Autodetect beamer mode
+if [[ "$DVIPS_PAPER_OPTIONS" ]] && \
+    grep -q -s "[ ]*\\documentclass.*beamer" $filename; then
+    info "Detected beamer: enabling beamer mode"
+    set_beamer_options
+    sleep $SLEEP_TIME
+fi
 
 # Compile the file with command line parameters
 compile $MODE
