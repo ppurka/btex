@@ -6,6 +6,10 @@
 
 
         ###                     Changelog                         ###
+        # 02/21/2009    Enabled autodetection of bibliography in tex#
+        #               file. This not quite complete and checks for#
+        #               specific strings in the latex file.         #
+        #               Need to do bibtex and other biblio options  #
         # 11/17/2008    Enabled autodetection of beamer in tex file #
         #               Also, changed menu to show enable/disable   #
         #               instead of the generic 'toggle'             #
@@ -73,6 +77,12 @@
         # Enable an auto mode, where the latex file will be         #
         # automatically compiled whenever the timestamp of the tex  #
         # file changes  --- DONE!                                   #
+        #                                                           #
+        # Bibliography: Check for other means of calling biblio     #
+        #               Check for \input{file} and check file for   #
+        #               bibliography content                        #
+        # Bibtex:       Check for bibtex autodetection              #
+        #               Also, need to look for \input{file}, etc    #
         #-----------------------------------------------------------#
 
 . `which my_bash_functions 2> /dev/null` || {
@@ -519,6 +529,10 @@ compile_ps() { #{{{
     run_latex || return
     if [[ $BIBTEX ]]; then
         run_bibtex; run_latex; run_latex
+    elif [[ $BIBLIOGRAPHY ]]; then
+        # If it has come till here, then latex ran ok earlier
+        # So, we don't need to return on error
+        run_latex; run_latex
     fi
 
     case $1 in
@@ -547,6 +561,10 @@ compile_pdf() { # {{{
     run_pdflatex || return
     if [[ $BIBTEX ]]; then
         run_bibtex; run_pdflatex; run_pdflatex
+    elif [[ $BIBLIOGRAPHY ]]; then
+        # If it has come till here, then pdflatex ran ok earlier
+        # So, we don't need to return on error
+        run_pdflatex; run_pdflatex
     fi
 }
 # }}}
@@ -621,6 +639,20 @@ if [[ "$DVIPS_PAPER_OPTIONS" ]] && \
     set_beamer_options
     sleep $SLEEP_TIME
 fi
+
+# Autodetect bibliography - not quite complete - also need auto-bibtex
+# Need to check for \input{filename} which contains bibliography
+# information
+if grep -q -s \
+    '^[[:space:]]*\\begin[[:space:]]*{[[:space:]]*thebibliography[[:space:]]*}'\
+    $filename || \
+    grep -q -s '^[[:space:]]*\\bibliography[[:space:]]*{[^}]*}' $filename;
+then
+    info "Detected bibliography in $filename. (pdf)latex will be run thrice"
+    BIBLIOGRAPHY=1
+    sleep $SLEEP_TIME
+fi
+
 
 # Compile the file with command line parameters
 compile $MODE
