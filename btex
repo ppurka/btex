@@ -702,7 +702,8 @@ while true; do
     [eE])   set_beamer_options;;
     [fF])   [[ "$file.pdf" -ot "$filename" ]] && {
                 echo
-                Err "The TEX file has been modified since this PDF was created"
+                Err -w \
+                "The TEX file has been modified since this PDF was created"
                 sleep 0.5
             }
             $PDF_VIEWER $PDF_VIEWER_OPTIONS $XPDF_OPTIONS $file.pdf >& \
@@ -726,7 +727,8 @@ while true; do
     [lL])   if [[ -f "$file.ps" ]]; then 
                 [[ "$file.ps" -ot "$filename" ]] && {
                     echo
-                    Err "The TEX file has been modified since this PS was created"
+                    Err -w \
+                    "The TEX file has been modified since this PS was created"
                     sleep 0.5
                 }
                 $PS_VIEWER $PS_VIEWER_OPTIONS $file.ps 2>/dev/null &
@@ -768,7 +770,8 @@ while true; do
                 # dvips error messages should not mess up terminal
                 [[ "$file.dvi" -ot "$filename" ]] && {
                     echo
-                    Err "The TEX file has been modified since this DVI was created"
+                    Err -w \
+                    "The TEX file has been modified since this DVI was created"
                     sleep 0.5
                 }
                 if [[ $gvim_server ]]; then
