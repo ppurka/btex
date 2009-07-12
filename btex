@@ -6,6 +6,14 @@
 
 
         ###                     Changelog                         ###
+        # 07/11/2009    Added an INOTIFY_DELAY to take care of 'file#
+        #               not found' errors.                          #
+        # 06/24/2009    Abstracted out latex and pdflatex commands  #
+        #               Changed text in menu so that it is clear    #
+        #               what viewer is tied to which file format    #
+        #               This reduces ambiguity of commands in the   #
+        #               case where the same viewer is used for all  #
+        #               or a multiple number of the file formats    #
         # 02/21/2009    Enabled autodetection of bibliography in tex#
         #               file. This not quite complete and checks for#
         #               specific strings in the latex file.         #
@@ -108,15 +116,18 @@ setup_config_file() {
     cat <<END > "$config_dir/$config_file"
 # btex config file
 # PS (POSTSCRIPT) file viewer,- uncomment or add a viewer
+# Default is empty.
 # PS_VIEWER=gv
 # PS_VIEWER=kghostview
 # PS_VIEWER=okular
 # PS_VIEWER=evince
 #
 # PS viewer options,- the following are for gv
+# Default is empty.
 # PS_VIEWER_OPTIONS="-watch -spartan"
 # 
 # PDF file viewer,- uncomment or add a viewer
+# Default is empty.
 # PDF_VIEWER=xpdf
 # PDF_VIEWER=kpdf
 # PDF_VIEWER=okular
@@ -125,16 +136,32 @@ setup_config_file() {
 # PDF_VIEWER=kghostview
 #
 # PDF viewer options,- the following are for xpdf
+# Default is empty.
 # PDF_VIEWER_OPTIONS="-q"
 #
 # DVI fiile viewer,- uncomment or add a viewer
+# Default is empty.
 # DVI_VIEWER=xdvi
 # DVI_VIEWER=kdvi
 # DVI_VIEWER=okular
 # DVI_VIEWER=evince
 #
 # DVI viewer options,- following are for xdvi
+# Default is empty.
 # DVI_VIEWER_OPTIONS="-watchfile 1"
+#
+# Default programs, first one is for ps, second is for pdf
+# Default is LaTeX=latex and PDFLaTeX=pdflatex.
+# LaTeX=latex
+# PDFLaTeX=pdflatex
+#
+# Delay used in inotifywait. This delay takes care of the time for which
+# the file is actually written to the disk. There are some issues with the
+# file not being found by (pdf)latex if the delay is too small.
+# Modify it to a larger value if the autocompile mode is aborted because
+# of "file not found" messages.
+# The delay is in seconds. Fractional values are possible. Default is 0.5
+# INOTIFY_DELAY=0.5
 END
     info "Set up your PS, PDF and DVI viewers in \
 $cyan$config_dir/$config_file$normal"
@@ -155,6 +182,11 @@ fi
 PS_VIEWER="${PS_VIEWER:?$(die Set ps viewer in $config_dir/$config_file)}"
 PDF_VIEWER="${PDF_VIEWER:-${pdf_viewer:?$(die Set pdf viewer in $config_dir/$config_file)}}"
 DVI_VIEWER="${DVI_VIEWER:?$(die Set dvi viewer in $config_dir/$config_file)}"
+# Commands: if they have been modified
+: ${LaTeX:=latex}
+: ${PDFLaTeX:=pdflatex}
+# Delay for inotifywait
+: ${INOTIFY_DELAY:=0.5}
 
 # check <program name> [info|Err|die] [<*_VIEWER>]
 # If *_VIEWER is present in argument then it must be $3
@@ -236,28 +268,28 @@ help(){ #{{{
     -a | --acroread       Use acrobat reader as pdf viewer in lieu of xpdf
     -B | --bibtex         Enable bibtex compilation
     -c | --choose4me      Choose some default settings: -i -n -r -s -T
-    -d | --pdf            Output a pdf file,- this uses pdflatex
+    -d | --pdf            Output a pdf file,- this uses $PDFLaTeX
     -e | --beamer         Toggle beamer mode: disable $DVIPS_PAPER_OPTIONS option in dvips
     -h | --help           This help text
     -h inv-search         Help information on inverse search
     -i | --inv-search     Enable inverse search in dvi
     -n | --no-postscript  Output only dvi file
     -nc| --no-color       Do not use color in output
-    -o | --pdf_ps         Generate ps automatically and also pdf via pdflatex
+    -o | --pdf_ps         Generate ps automatically and also pdf via $PDFLaTeX
     -p | --postscript     Run dvips automatically, providing ps output
     -r | --recursive      Recursively compile the source. Otherwise
                           the program will compile once and exit
-    -s | --silent         Print only errors/warnings output by (pdf)latex
+    -s | --silent         Print only errors/warnings output by $LaTeX/$PDFLaTeX
     -t <paper type>       Run dvips with -t<paper type> option.
                           Default paper type used is ${bold}letter${normal}
-    -T | --no-interaction Run (pdf)latex with -interaction=nonstopmode argument
-    -z | --stop           Exit script if latex gives errors
+    -T | --no-interaction Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
+    -z | --stop           Exit script if $LaTeX gives errors
     "
     info "If multiple -d,-n,-o,-p,-2 are given then the last one will be used"
     echo
     info "If no filename is given, then an interactive input prompt is provided
     ${underline}An example, when using beamer${normal}:
-    btex -b -d -r -s    # recursive, silent, using pdflatex & beamer"
+    btex -b -d -r -s    # recursive, silent, using $PDFLaTeX & beamer"
     echo
 } #}}}
 
@@ -362,37 +394,37 @@ show_menu() { # {{{
         NO_POSTSCRIPT)  echo -e "\tOnly DVI file is generated";;
         POSTSCRIPT)     echo -e "\tPostscript file is automatically generated";;
         PS2PDF)         echo -e "\tPDF file is generated from PS, using ps2pdf";;
-        PDF)            echo -e "\tPDF file is generated using pdflatex";;
-        PDF_POSTSCRIPT) echo -e "\tPS file + PDF file generated via pdflatex";;
+        PDF)            echo -e "\tPDF file is generated using $PDFLaTeX";;
+        PDF_POSTSCRIPT) echo -e "\tPS file + PDF file generated via $PDFLaTeX";;
     esac
     case $SILENT in
         _no-interaction_silent_nowarning) 
             non_int="Disable"
             silnt="Disable Silent mode           "
             echo -e "\t\t\tNon-interactive mode is enabled"
-            echo -e "\t\t\tOnly errors in latex output are shown";;
+            echo -e "\t\t\tOnly errors in $LaTeX output are shown";;
         _no-interaction_nowarning)
             non_int="Disable"
             echo -e "\t\t\tNon-interactive mode is enabled"
-            echo -e "\t\t\tErrors in latex output are highlighted";;
+            echo -e "\t\t\tErrors in $LaTeX output are highlighted";;
         _silent_nowarning) 
             silnt="Disable Silent mode           "
-            echo -e "\t\t\tOnly errors in latex output are shown";;
+            echo -e "\t\t\tOnly errors in $LaTeX output are shown";;
         _no-interaction_silent)
             non_int="Disable"
             silnt="Disable Silent mode           "
             warn="${warn/Enable/Disable}"
             echo -e "\t\t\tNon-interactive mode is enabled"
-            echo -e "\t\t\tOnly errors/warnings in latex output are shown";;
+            echo -e "\t\t\tOnly errors/warnings in $LaTeX output are shown";;
         _no-interaction)
             non_int="Disable"
             warn="${warn/Enable/Disable}"
             echo -e "\t\t\tNon-interactive mode is enabled"
-            echo -e "\t\t\tErrors/warnings in latex output are highlighted";;
+            echo -e "\t\t\tErrors/warnings in $LaTeX output are highlighted";;
         _silent) 
             silnt="Disable Silent mode           "
             warn="${warn/Enable/Disable}"
-            echo -e "\t\t\tOnly errors/warnings in latex output are shown";;
+            echo -e "\t\t\tOnly errors/warnings in $LaTeX output are shown";;
         *)  ;;
     esac
 
@@ -412,9 +444,12 @@ show_menu() { # {{{
     # This lower part has an ugly long string argument
     infon "Want to continue with another compile?
     Enter/${g}Y$n: Yes (Repeat compile)     ${g}N$n: No (${g}Q${n}uit)
-    ${g}P$n: Toggle Postscript output       ${g}L$n: Launch ${PS_VIEWER##*\/}
-    ${g}D$n: Toggle Pdf Output              ${g}X$n: Launch ${DVI_VIEWER}
-    ${g}2$n: Toggle PS to PDF output        ${g}F$n: Launch ${PDF_VIEWER}
+    ${g}P$n: Toggle Postscript output       ${g}L$n: Launch ps viewer \
+(${PS_VIEWER##*\/})
+    ${g}D$n: Toggle Pdf Output              ${g}X$n: Launch dvi viewer \
+(${DVI_VIEWER})
+    ${g}2$n: Toggle PS to PDF output        ${g}F$n: Launch pdf viewer \
+(${PDF_VIEWER})
     ${g}O$n: Toggle both PS and PDF output
     ${g}E$n: $bmr ${g}B$n: $bibtx Bibtex compilation \
 $inv
@@ -451,38 +486,38 @@ run_latex() { # {{{
     local status
     case $SILENT in
         _no-interaction_silent_nowarning)
-            latex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
+            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
+            | sed -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_nowarning)
-            latex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -e "/^! /,+5s/\(.*\)/$red\1$normal/"
+            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
+            | sed -e "/^! /,+5s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent_nowarning) 
-            latex $INVERSE_SEARCH $filename >&1 | \
+            $LaTeX $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_silent)
-            latex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
+            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
+            | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction)
-            latex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
+            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
+            | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
                 -e "/^! /,+5s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent) 
-            latex $INVERSE_SEARCH $filename >&1 | \
+            $LaTeX $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
-        *)  latex $INVERSE_SEARCH $filename
+        *)  $LaTeX $INVERSE_SEARCH $filename
             status=$? ;;
     esac
 
     [[ $status -ne 0 && -z $NON_STOP ]] && \
-        die "${filename}: Error in latex compilation" || \
+        die "${filename}: Error in $LaTeX compilation" || \
         return $status
 } # }}}
 
@@ -490,38 +525,38 @@ run_pdflatex() { # {{{
     local status
     case $SILENT in
         _no-interaction_silent_nowarning)
-            pdflatex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
+            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
+            >&1 | sed -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_nowarning)
-            pdflatex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -e "/^! /,+5s/\(.*\)/$red\1$normal/"
+            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
+            >&1 | sed -e "/^! /,+5s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent_nowarning) 
-            pdflatex $INVERSE_SEARCH $filename >&1 | \
+            $PDFLaTeX $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_silent)
-            pdflatex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
+            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
+            >&1 | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction)
-            pdflatex $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 | \
-            sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
+            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
+            >&1 | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
                 -e "/^! /,+5s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent) 
-            pdflatex $INVERSE_SEARCH $filename >&1 | \
+            $PDFLaTeX $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
-        *)  pdflatex $INVERSE_SEARCH $filename
+        *)  $PDFLaTeX $INVERSE_SEARCH $filename
             status=$? ;;
     esac
 
     [[ $status -ne 0 && -z $NON_STOP ]] && \
-        die "${filename}: pdflatex compilation failed" || \
+        die "${filename}: $PDFLaTeX compilation failed" || \
         return $status
 } # }}}
 
@@ -599,7 +634,7 @@ autocompile() { # {{{
             info "Autocompile # $i/$TOTAL                                   "
             # Sleep for a brief period while the file gets written to disk
             # Otherwise the file is sometimes not found on the disk
-            sleep 0.5
+            sleep $INOTIFY_DELAY
             compile $MODE
         else
             info "${red}Abort autocompile${normal}: No change in status of file for over $WAITTIME seconds"
@@ -610,9 +645,9 @@ autocompile() { # {{{
 # }}}
 
 # Some error checking
-check latex
+check $LaTeX
 [[ "$MODE" = *POSTSCRIPT || $MODE = PS2PDF ]] && check dvips
-[[ "$MODE" = "PDF" ]] && check pdflatex && check epstopdf
+[[ "$MODE" = "PDF" ]] && check $PDFLaTeX && check epstopdf
 
 
 if [[ -z ${filename} ]]; then
@@ -648,7 +683,8 @@ if grep -q -s \
     $filename || \
     grep -q -s '^[[:space:]]*\\bibliography[[:space:]]*{[^}]*}' $filename;
 then
-    info "Detected bibliography in $filename. (pdf)latex will be run thrice"
+    info "Detected bibliography in $filename.
+    $LaTeX/$PDFLaTeX will be run thrice"
     BIBLIOGRAPHY=1
     sleep $SLEEP_TIME
 fi
@@ -671,7 +707,7 @@ else
 fi
 
 # Determine if the (pdf)latex has -src-specials command line option
-if latex -help | grep -q "^-src-specials"; then
+if $LaTeX -help | grep -q "^-src-specials"; then
     INVERSE_SEARCH_CAPABLE=1
 fi
 
@@ -721,7 +757,7 @@ while true; do
                 sleep $SLEEP_TIME
             else
                 die "$answer: Invalid option!
-    This option will be enabled when your (pdf)latex is recent enough to
+    This option will be enabled when your $LaTeX/$PDFLaTeX is recent enough to
     accept the -src-specials argument"
             fi;;
     [lL])   if [[ -f "$file.ps" ]]; then 
