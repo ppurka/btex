@@ -6,6 +6,15 @@
 
 
         ###                     Changelog                         ###
+        # 07/15/2009    Added support for editors other than gvim   #
+        #               Fixed bugs in set_xdvi and in enabling of   #
+        #               inverse search.                             #
+        #               Fixed some errors in help text.             #
+        # 07/13/2009    Much better sed expressions. Also fixed a   #
+        #               misinformation in the help text. Finally,   #
+        #               added possibility of passing additional opts#
+        #               to (pdf)latex and set PAPER type in config  #
+        #               Now, we o/p which # of compile is running   #
         # 07/11/2009    Added an INOTIFY_DELAY to take care of 'file#
         #               not found' errors.                          #
         # 06/24/2009    Abstracted out latex and pdflatex commands  #
@@ -68,6 +77,7 @@
         # 02/??/2007    Enabled an option to support beamer         #
         # 01/??/2007    Enabled a "non-stop" mode                   #
         # <=01/01/2007  Umpteen number of untracked changes         #
+        #  early 2006?  First version of the script                 #
         #-----------------------------------------------------------#
 
         ###                         TODO (04/28/2007)             ###
@@ -139,7 +149,7 @@ setup_config_file() {
 # Default is empty.
 # PDF_VIEWER_OPTIONS="-q"
 #
-# DVI fiile viewer,- uncomment or add a viewer
+# DVI file viewer,- uncomment or add a viewer
 # Default is empty.
 # DVI_VIEWER=xdvi
 # DVI_VIEWER=kdvi
@@ -154,6 +164,22 @@ setup_config_file() {
 # Default is LaTeX=latex and PDFLaTeX=pdflatex.
 # LaTeX=latex
 # PDFLaTeX=pdflatex
+#
+# Extra options used by LaTeX and PDFLaTeX. Default is empty.
+# LaTeX_Opts=""
+# PDFLaTeX_Opts=""
+# Suggested Options:
+# LaTeX_Opts="-file-line-error"
+# PDFLaTeX_Opts="-file-line-error"
+#
+# Paper type used in creating ps from dvi. This is used by dvips
+# Default is letter
+# PAPER=letter
+#
+# Editor to be used with xdvi for inverse search. Use -h editor for more
+# information on how to set up.
+# Default is gvim
+# btex_editor=gvim
 #
 # Delay used in inotifywait. This delay takes care of the time for which
 # the file is actually written to the disk. There are some issues with the
@@ -185,6 +211,7 @@ DVI_VIEWER="${DVI_VIEWER:?$(die Set dvi viewer in $config_dir/$config_file)}"
 # Commands: if they have been modified
 : ${LaTeX:=latex}
 : ${PDFLaTeX:=pdflatex}
+: ${PAPER:=letter}
 # Delay for inotifywait
 : ${INOTIFY_DELAY:=0.5}
 
@@ -192,7 +219,7 @@ DVI_VIEWER="${DVI_VIEWER:?$(die Set dvi viewer in $config_dir/$config_file)}"
 # If *_VIEWER is present in argument then it must be $3
 check() {
     local INFO=die
-    local exe=`which $1 2>/dev/null`
+    local exe="$(which $1 2>/dev/null)"
     [[ $2 ]] && INFO=$2
     if [[ ! -x "$exe" && $3 ]]; then
         $INFO "You don't seem to have $bold$1$normal installed.\
@@ -207,12 +234,10 @@ check() {
     return 0
 }
     
-PAPER=letter
 DVIPS_PAPER_OPTIONS="-t$PAPER"
 check $DVI_VIEWER die DVI_VIEWER
 check $PDF_VIEWER die PDF_VIEWER
 check $PS_VIEWER die PS_VIEWER
-gvim_server=
 RECURSIVE=0
 # By default use non-stop mode, i.e. script will not exit on latex error
 NON_STOP=1; 
@@ -229,8 +254,8 @@ NON_STOP=1;
 #   <none>: latex is compiled as if it is typed as latex <file>.tex
 SILENT=
 COUNT=1
-INVERSE_SEARCH=;         # Command line option when inv search is enabled
-INVERSE_SEARCH_CAPABLE=; # non-empty if latex takes -src-specials argument
+INVERSE_SEARCH=          # Command line option when inv search is enabled
+INVERSE_SEARCH_CAPABLE=  # non-empty if latex takes -src-specials argument
 XPDF_OPTIONS=
 SLEEP_TIME=1
 # Possible modes: 
@@ -245,9 +270,9 @@ MODE="ASK_POSTSCRIPT"
 
 help(){ #{{{
     echo
-    echo -e " $yellow $( basename ${0} ):$normal"
-    if [[ "$1" = "inv-search" ]]; then
-        info "${bold}Inverse search:$normal
+    echo -e " $yellow ${0##*\/}:$normal"
+    case "$1" in
+        "inv-search")   info "${bold}Inverse search:$normal
     - Inverse search is the feature by which one can access the
       corresponding line in an editor by clicking in the viewer (used to
       view the latex output).
@@ -257,12 +282,33 @@ help(){ #{{{
     - The dvi viewer which is automatically set up by this script is xdvi.
       Other dvi viewers will need to be configured separately.
     - If you use okular, then inverse search may be possible even in 
-      pdf files.
+      pdf files. Search Google for pdfsync and okular.
       " 
-        return
-    fi
+        return ;;
+        "editor")       info "${bold}Editor:$normal
+    If you have set your dvi viewer to xdvi, then this script supports
+    enabling inverse search in xdvi.
+    The editors which are automatically configured to work with the inverse
+    search of xdvi are any of the vim/gvim variant.
+    
+    You can set the editor permanently in $cyan$config_dir/$config_file$normal
+    by setting the ${bold}btex_editor$normal variable.
+    You can temporarily set some vim/gvim variant other than the one set in
+    the config file by using the --editor argument to $yellow${0##*\/}$normal
+
+    If you want inverse search with some other editor, then do the following:
+    - Create your own script named:
+      $cyan$config_dir/btex_custom_editor$normal
+    - Ensure that the only output of the script is the editor command that
+      is to be passed to xdvi.
+    - Set ${bold}btex_editor=custom$normal in:
+      $cyan$config_dir/$config_file$normal
+    "
+        return;;
+    esac
+
     info "This program is used to compile latex files and output ps/pdf files"
-    info "Usage:     $( basename ${0} ) [<options>] [<filename>.tex]"
+    info "Usage:     ${0##*\/} [<options>] [<filename>.tex]"
     info "Options:
     -2 | --ps2pdf         Generate pdf from postscript output
     -a | --acroread       Use acrobat reader as pdf viewer in lieu of xpdf
@@ -270,7 +316,11 @@ help(){ #{{{
     -c | --choose4me      Choose some default settings: -i -n -r -s -T
     -d | --pdf            Output a pdf file,- this uses $PDFLaTeX
     -e | --beamer         Toggle beamer mode: disable $DVIPS_PAPER_OPTIONS option in dvips
+    -E | --editor <editor> Provide an editor to be used with xdvi for
+                          inverse search. Use '-h editor' to get more help
     -h | --help           This help text
+    -h editor             Provide information on set-up of editor for inverse
+                          search with xdvi
     -h inv-search         Help information on inverse search
     -i | --inv-search     Enable inverse search in dvi
     -n | --no-postscript  Output only dvi file
@@ -285,18 +335,20 @@ help(){ #{{{
     -T | --no-interaction Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
     -z | --stop           Exit script if $LaTeX gives errors
     "
-    info "If multiple -d,-n,-o,-p,-2 are given then the last one will be used"
-    echo
+    info "If multiple -d,-n,-o,-p,-2 are given then the last one will be used
+    "
     info "If no filename is given, then an interactive input prompt is provided
     ${underline}An example, when using beamer${normal}:
-    btex -b -d -r -s    # recursive, silent, using $PDFLaTeX & beamer"
-    echo
+    btex -e -d -r -s    # recursive, silent, using $PDFLaTeX & beamer
+    "
 } #}}}
 
 
 
 
 set_xdvi() { # {{{
+    # The following algo for gvim runs only if btex_editor is empty or it
+    # has been set to gvim
     # Enter gvim --remote here:
     #   determine if only one gvim is running, if so take that as the remote
     #   else: check to see if multiple gvim's are running
@@ -306,18 +358,70 @@ set_xdvi() { # {{{
     #       else:   file is not open, can't do anything.
     #   else: file is not open, can't do anything.
     [[ ${DVI_VIEWER/xdvi/} = $DVI_VIEWER ]] && return
-    local TMP_FILE
-    TMP_FILE=`mktemp /tmp/btex.XXXX` || TMP_FILE=/tmp/$UID.btex
-    ps -u $USER -o command | grep ^gvim  > $TMP_FILE
-
-    if grep "$file" $TMP_FILE | grep -q "\-\-servername"; then
-        gvim_server=`grep "$file" $TMP_FILE | sed -ne "s@^.*\-\-servername \([[:alnum:]]*\) .*$@\1@p"`
-    elif grep -q "$file" $TMP_FILE; then
-        gvim_server=`grep -n "$file" $TMP_FILE`
-        gvim_server=${gvim_server%%:*}
-        gvim_server=`gvim --serverlist | tail -n +$gvim_server | head -n 1`
+    
+    # If btex_editor is non-empty then start using it
+    if [[ "$btex_editor" ]]; then
+        which $btex_editor >& /dev/null  || {
+            Err -w "$cyan$btex_editor$normal is not in your \$PATH.
+    I hope the name is correctly specified."
+            sleep $SLEEP_TIME
+        }
+    elif which gvim >& /dev/null; then
+        btex_editor="gvim"
+    else
+        Err -w "No editor is set and gvim is not found. Inverse search with
+    xdvi will not work."
+        return
     fi
-    rm -f $TMP_FILE
+    local TMP_FILE _editor="${btex_editor##*\/}"
+    TMP_FILE="$(mktemp /tmp/btex.XXXX)" || TMP_FILE=/tmp/$UID.btex
+    case "$_editor" in
+        custom)     # This is the custom editor. The output of the script
+                    # that is run should contain the editor command to be 
+                    # passed to xdvi. The script to be run should be 
+                    # $config_dir/btex_custom_editor
+            if [[ -x "$config_dir/btex_custom_editor" ]]; then
+                btex_editor="$( $config_dir/btex_custom_editor )"
+            else    # Else make this variable empty.
+                btex_editor=""
+            fi;;
+        ""|gvim|rgvim|gview|rgview|eview|vim|rview|evim|*vimdiff)
+            # If the variable btex_editor is empty then we will
+            # just search for *vim. The result will be non-empty
+            # editor output for xdvi only if *vim is running and it
+            # has the required latex file opened.
+            local server
+            ps -u $USER -o command | grep -vw "grep" | \
+                grep -E "[/]?${_editor}"  > $TMP_FILE
+            if grep "$filename" $TMP_FILE | grep -q "\-\-servername"; then
+                server="$(grep -E \
+                "($filename\ .*\-\-servername|\-\-servername\ .*$filename)" \
+                $TMP_FILE | sed -ne \
+                "s@^.*\-\-servername[[:space:]]\+\([[:alnum:]]*\) .*@\1@p")"
+            elif grep -q "$filename" $TMP_FILE; then
+                # Hopefully there aren't two files of the same name open :S
+                # If xdvi is already running, having been started from
+                # gvim, then it should be having the --servername command
+                # embedded in it. In this case the previous if will succeed
+                # and we will get the correct gvim
+                server="$(grep -ns "$filename" $TMP_FILE)"
+                # The following line will get the first one, if there are
+                # multiple files with same name open.
+                server=${server%%:*}
+                server="$($btex_editor --serverlist | tail -n +$server | \
+                    head -n 1)"
+                if [[ "$server" ]]; then
+                    btex_editor="$btex_editor --servername $server --remote +%l %f"
+                else
+                    btex_editor=""
+                fi
+            fi ;;
+            *)  Err "$_editor: Unknown editor. There is no support for this
+    editor in $yellow${0##*\/}$normal."
+            sleep $SLEEP_TIME
+            help "editor";;
+        esac
+        rm -f $TMP_FILE
 }
 # }}}
 
@@ -338,43 +442,42 @@ if [[ $DISPLAY && -z "$@" ]] && ! tty -s; then
 fi
 
 until [[ -z "$1" ]]; do
-    case $1 in
+    case "$1" in
     -2 | --ps2pdf)      MODE="PS2PDF";;
     -a | --acroread)    check acroread && PDF_VIEWER="$CHECKED";;
     -B | --bibtex)      check bibtex && BIBTEX=1;;
     -c | --choose4me)   # Choose a default set of options automatcially
         # -i -n -r -s -T
         INVERSE_SEARCH="-src-specials"
-        set_xdvi
         MODE="NO_POSTSCRIPT"
         RECURSIVE=1
         [[ $SILENT = *_silent ]] || SILENT=${SILENT}_silent
         [[ $SILENT = _no-interaction* ]] || SILENT=_no-interaction$SILENT;;
     -d | --pdf)         MODE="PDF";;
     -e | --beamer)      set_beamer_options;;
-    -h | --help)        help "$2"; exit; ;;
-    -i | --inv-search)  INVERSE_SEARCH="-src-specials"
-                        set_xdvi;;
+    -E | --editor)      btex_editor="$2"; shift ;;
+    -h | --help)        help "$2"; exit ;;
+    -i | --inv-search)  INVERSE_SEARCH="-src-specials" ;;
     -n | --no-postscript) MODE="NO_POSTSCRIPT";;
     -nc| --no-color)    unset ${COLORS[@]} ;;
     -o | --pdf_ps)      MODE="PDF_POSTSCRIPT";;
     -p | --postscript)  MODE="POSTSCRIPT";;
-    -r | --recursive)   RECURSIVE=1; ;;
+    -r | --recursive)   RECURSIVE=1 ;;
     -s | --silent)      [[ $SILENT = *_silent ]] || SILENT=${SILENT}_silent;;
     -t) [[ $2 = -* ]] && die "$2: Invalid paper type to -t option"
         PAPER=$2; DVIPS_PAPER_OPTIONS=-t$PAPER; shift;;
     -T | --no-interaction) [[ $SILENT = _no-interaction* ]] ||\
         SILENT=_no-interaction$SILENT;;
     -z | --stop)        unset NON_STOP ;;
-    -*) help; die "${red}$1${normal}: Invalid Option!\n"; ;;
-    *)  filename="$1"; ;;
+    -*) help; die "${red}$1${normal}: Invalid Option!\n" ;;
+    *)  filename="$1" ;;
     esac
     shift
 done
 
 # check for command line acroread option: if the viewers are different then
 # set PDF_VIEWER_OPTIONS to null
-[[ $pdf_viewer != $PDF_VIEWER ]] && PDF_VIEWER_OPTIONS=
+[[ "$pdf_viewer" != "$PDF_VIEWER" ]] && PDF_VIEWER_OPTIONS=
 
 show_menu() { # {{{
     echo; echo
@@ -473,6 +576,7 @@ success() {
 }
 
 run_bibtex() { # {{{
+    infor "Running bibtex"
     if [[ $SILENT ]]; then
         bibtex --terse $file
         [[ $? -ne 0 && -z $NON_STOP ]] && die "$filename: bibtex failed"
@@ -484,90 +588,114 @@ run_bibtex() { # {{{
 
 run_latex() { # {{{
     local status
+    infor "$cyan$1$normal run of $LaTeX"
     case $SILENT in
         _no-interaction_silent_nowarning)
-            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
-            | sed -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
+            $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
+            $filename >&1 | sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_nowarning)
-            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
-            | sed -e "/^! /,+5s/\(.*\)/$red\1$normal/"
+            $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
+            $filename >&1 | sed -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent_nowarning) 
-            $LaTeX $INVERSE_SEARCH $filename >&1 | \
-            sed -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
+            $LaTeX $LaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
+            sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_silent)
-            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
-            | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
+            $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
+            $filename >&1 | sed -ne \
+                "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
+                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction)
-            $LaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename >&1 \
-            | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
-                -e "/^! /,+5s/\(.*\)/$red\1$normal/"
+            $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
+            $filename >&1 | sed -e \
+                "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
+                -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent) 
-            $LaTeX $INVERSE_SEARCH $filename >&1 | \
+            $LaTeX $LaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
+                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
-        *)  $LaTeX $INVERSE_SEARCH $filename
+        *)  $LaTeX $LaTeX_Opts $INVERSE_SEARCH $filename
             status=$? ;;
     esac
 
-    [[ $status -ne 0 && -z $NON_STOP ]] && \
-        die "${filename}: Error in $LaTeX compilation" || \
+    if [[ $status -ne 0 && -z $NON_STOP ]]; then 
+        die "${filename}: Error in $LaTeX compilation"
+    else
         return $status
+    fi
 } # }}}
 
 run_pdflatex() { # {{{
     local status
+    infor "$cyan$1$normal run of $LaTeX"
     case $SILENT in
         _no-interaction_silent_nowarning)
-            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
-            >&1 | sed -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
+            $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+            -interaction=nonstopmode $filename \
+            >&1 | sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_nowarning)
-            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
-            >&1 | sed -e "/^! /,+5s/\(.*\)/$red\1$normal/"
+            $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+            -interaction=nonstopmode $filename \
+            >&1 | sed -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent_nowarning) 
-            $PDFLaTeX $INVERSE_SEARCH $filename >&1 | \
-            sed -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
+            $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
+            sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_silent)
-            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
+            $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+            -interaction=nonstopmode $filename \
             >&1 | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^! /,+5s/\(.*\)/$red\1$normal/p"
+                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction)
-            $PDFLaTeX $INVERSE_SEARCH -interaction=nonstopmode $filename \
+            $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+            -interaction=nonstopmode $filename \
             >&1 | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
-                -e "/^! /,+5s/\(.*\)/$red\1$normal/"
+                -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent) 
-            $PDFLaTeX $INVERSE_SEARCH $filename >&1 | \
+            $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^! /,+11s/\(.*\)/$red\1$normal/p"
+                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
-        *)  $PDFLaTeX $INVERSE_SEARCH $filename
+        *)  $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH $filename
             status=$? ;;
     esac
 
-    [[ $status -ne 0 && -z $NON_STOP ]] && \
-        die "${filename}: $PDFLaTeX compilation failed" || \
+    if [[ $status -ne 0 && -z $NON_STOP ]]; then
+        die "${filename}: $PDFLaTeX compilation failed"
+    else
         return $status
+    fi
 } # }}}
 
 compile_ps() { #{{{
-    run_latex || return
+    run_latex "1st" || return
     if [[ $BIBTEX ]]; then
-        run_bibtex; run_latex; run_latex
+        run_bibtex; run_latex "2nd"; run_latex "3rd"
     elif [[ $BIBLIOGRAPHY ]]; then
         # If it has come till here, then latex ran ok earlier
         # So, we don't need to return on error
-        run_latex; run_latex
+        run_latex "2nd"; run_latex "3rd"
     fi
 
     case $1 in
@@ -593,13 +721,13 @@ compile_pdf() { # {{{
             success $?
         fi
     done
-    run_pdflatex || return
+    run_pdflatex "1st" || return
     if [[ $BIBTEX ]]; then
-        run_bibtex; run_pdflatex; run_pdflatex
+        run_bibtex; run_pdflatex "2nd"; run_pdflatex "3rd"
     elif [[ $BIBLIOGRAPHY ]]; then
         # If it has come till here, then pdflatex ran ok earlier
         # So, we don't need to return on error
-        run_pdflatex; run_pdflatex
+        run_pdflatex "2nd"; run_pdflatex "3rd"
     fi
 }
 # }}}
@@ -625,7 +753,7 @@ autocompile() { # {{{
     local TOTAL=$2
     #local WAITTIME=$3;     # WAITTIME should be already set
     for (( i=1; i<=$TOTAL; i+=1 )); do
-        echo -ne "  ${blue} *   Waiting$normal for change in the status of file ...\r"
+        infor "${blue}Waiting$normal for change in the status of file ..."
         if $INOTIFYWAIT -t $WAITTIME -qq ${filename}; then
         # Use above line if you want to break out of autocompile after some
         # time, say 300s, if no modifications are made for 300s.
@@ -709,6 +837,7 @@ fi
 # Determine if the (pdf)latex has -src-specials command line option
 if $LaTeX -help | grep -q "^-src-specials"; then
     INVERSE_SEARCH_CAPABLE=1
+    [[ "$INVERSE_SEARCH" ]] && set_xdvi
 fi
 
 # Now, enter recursion
@@ -740,12 +869,12 @@ while true; do
                 echo
                 Err -w \
                 "The TEX file has been modified since this PDF was created"
-                sleep 0.5
+                sleep $SLEEP_TIME
             }
             $PDF_VIEWER $PDF_VIEWER_OPTIONS $XPDF_OPTIONS $file.pdf >& \
                 /dev/null & ;;
     [iI])   if [[ $INVERSE_SEARCH ]]; then
-                INVERSE_SEARCH=; gvim_server=; echo
+                INVERSE_SEARCH=; btex_editor=; echo
                 info "Disabling inverse search during compilation. Restart ${DVI_VIEWER##*\/}."
                 sleep $SLEEP_TIME
             elif [[ $INVERSE_SEARCH_CAPABLE ]]; then
@@ -765,7 +894,7 @@ while true; do
                     echo
                     Err -w \
                     "The TEX file has been modified since this PS was created"
-                    sleep 0.5
+                    sleep $SLEEP_TIME
                 }
                 $PS_VIEWER $PS_VIEWER_OPTIONS $file.ps 2>/dev/null &
                 [[ $? -ne 0 ]] && Err "Error in launching ${PS_VIEWER##*\/}"
@@ -808,12 +937,11 @@ while true; do
                     echo
                     Err -w \
                     "The TEX file has been modified since this DVI was created"
-                    sleep 0.5
+                    sleep $SLEEP_TIME
                 }
-                if [[ $gvim_server ]]; then
-                    # gvim_server is nonempty if xdvi is used
-                    $DVI_VIEWER $DVI_VIEWER_OPTIONS -editor \
-                        "gvim --servername $gvim_server --remote +%l %f" \
+                if [[ "$btex_editor" ]]; then
+                    # btex_editor is nonempty if xdvi is used
+                    $DVI_VIEWER $DVI_VIEWER_OPTIONS -editor "$btex_editor" \
                         $file.dvi >& /dev/null &
                 else
                     $DVI_VIEWER $DVI_VIEWER_OPTIONS $file.dvi >& /dev/null &
