@@ -6,6 +6,8 @@
 
 
         ###                     Changelog                         ###
+        # 07/21/2009    Added support for polled autocompile mode!  #
+        #               This had been on the TODO for months!       #
         # 07/15/2009    Added support for editors other than gvim   #
         #               Fixed bugs in set_xdvi and in enabling of   #
         #               inverse search.                             #
@@ -188,6 +190,16 @@ setup_config_file() {
 # of "file not found" messages.
 # The delay is in seconds. Fractional values are possible. Default is 0.5
 # INOTIFY_DELAY=0.5
+#
+# Polled autocompile mode. Use this mode if inotifywait is not installed
+# and you either can not install it or you don't want to install it!
+# Set POLLED_AUTOCOMPILE to a non-zero integer. The value of the integer
+# determines the polling interval,- the number of seconds we will wait
+# before checking again whether the latex file has been modified.
+# If this variable is set to a non-zero integer and inotifywait is also
+# installed, then inotifywait will be used.
+# Default is empty.
+# POLLED_AUTOCOMPILE=1
 END
     info "Set up your PS, PDF and DVI viewers in \
 $cyan$config_dir/$config_file$normal"
@@ -214,6 +226,7 @@ DVI_VIEWER="${DVI_VIEWER:?$(die Set dvi viewer in $config_dir/$config_file)}"
 : ${PAPER:=letter}
 # Delay for inotifywait
 : ${INOTIFY_DELAY:=0.5}
+: ${POLLED_AUTOCOMPILE:=0}
 
 # check <program name> [info|Err|die] [<*_VIEWER>]
 # If *_VIEWER is present in argument then it must be $3
@@ -487,7 +500,8 @@ show_menu() { # {{{
         silnt="Enable Silent mode            " \
         bmr="Enable Beamer mode            " \
         bibtx="Enable"
-    [[ $INOTIFYWAIT ]] && auto="    ${g}A${n}: Enable Autocompile mode\n"
+    [[ $INOTIFYWAIT || $POLLED_AUTOCOMPILE -gt 0 ]] && \
+        auto="    ${g}A${n}: Enable Autocompile mode\n"
     [[ $SILENT ]] && warn="${g}W$n: Enable output of warnings"
     [[ $INVERSE_SEARCH_CAPABLE ]] && inv="\n    ${g}I$n: Enable Inverse search"
 
@@ -751,24 +765,50 @@ compile() { # {{{
 autocompile() { # {{{
     local MODE=$1
     local TOTAL=$2
-    #local WAITTIME=$3;     # WAITTIME should be already set
-    for (( i=1; i<=$TOTAL; i+=1 )); do
-        infor "${blue}Waiting$normal for change in the status of file ..."
-        if $INOTIFYWAIT -t $WAITTIME -qq ${filename}; then
-        # Use above line if you want to break out of autocompile after some
-        # time, say 300s, if no modifications are made for 300s.
-        # Otherwise use following line
-        #if inotifywait -qq ${filename}; then
-            info "Autocompile # $i/$TOTAL                                   "
-            # Sleep for a brief period while the file gets written to disk
-            # Otherwise the file is sometimes not found on the disk
-            sleep $INOTIFY_DELAY
-            compile $MODE
-        else
-            info "${red}Abort autocompile${normal}: No change in status of file for over $WAITTIME seconds"
-            return
-        fi
-    done
+    local clr="$(tput el)"
+    if [[ "$INOTIFYWAIT" ]]; then
+        #local WAITTIME=$3;     # WAITTIME should be already set
+        for (( i=1; i<=$TOTAL; i+=1 )); do
+            infor "${blue}Waiting$normal for change in the status of file ..."
+            if $INOTIFYWAIT -t $WAITTIME -qq ${filename}; then
+            # Use above line if you want to break out of autocompile after
+            # some time, say 300s, if no modifications are made for 300s.
+            # Otherwise use following line
+            #if inotifywait -qq ${filename}; then
+                info "Autocompile # $i/$TOTAL$clr"
+                # Sleep for a brief period while the file gets written to
+                # disk. Otherwise file is sometimes not found on the disk
+                sleep $INOTIFY_DELAY
+                compile $MODE
+            else
+                info "${red}Abort autocompile${normal}: No change in status of file for over $WAITTIME seconds"
+                return
+            fi
+        done
+    elif [[ "$POLLED_AUTOCOMPILE" -ne 0 ]]; then
+        local t=0 LAST_MOD=0 TMP_FILE
+        TMP_FILE="$(mktemp /tmp/btex.XXXX)" || TMP_FILE=/tmp/$UID.btex
+        for (( i=1; i<=$TOTAL; i+=1 )); do
+            infor "${blue}Waiting$normal for change in the status of file ..."
+            LAST_MOD="$(ls -l --full-time $filename | \
+                awk '{ print $6" "$7 }')"
+            touch -d "$LAST_MOD" $TMP_FILE
+            while [[ ! $filename -nt $TMP_FILE && $t -le $WAITTIME ]]; do
+                [[ $WAITTIME -gt 0 ]] && ((t++))
+                sleep $POLLED_AUTOCOMPILE
+            done
+            if [[ $t -le $WAITTIME ]]; then
+                info "Autocompile # $i/$TOTAL$clr"
+                sleep $INOTIFY_DELAY
+                compile $MODE
+            else
+                info "${red}Abort autocompile${normal}: No change in status of file for over $WAITTIME seconds"
+                rm $TMP_FILE
+                return
+            fi
+        done
+        rm $TMP_FILE
+    fi
 }
 # }}}
 
@@ -825,11 +865,29 @@ compile $MODE
 # Check for the presence of inotifywait
 if check inotifywait Err; then
     INOTIFYWAIT=$CHECKED
-else
+elif [[ $POLLED_AUTOCOMPILE -eq 0 ]]; then
     echo -e "\
   $red+-----------------------------------------------------------+
   |                                                           |
   | ${bold}inotifywait$normal not found. Autocompile mode will be disabled  $red|
+  |                                                           |
+  |$normal If you want to enable polled autocompile, then set the    $red|
+  |$normal variable POLLED_AUTOCOMPILE in the config file to a       $red|
+  |$normal non-zero integer. The integer will determine the polling  $red|
+  |$normal interval (in seconds),- the number of seconds we will wait$red|
+  |$normal before checking whether the latex file has been modified. $red|
+  |                                                           |
+  +-----------------------------------------------------------+$normal"
+  sleep $DELAY
+else
+    echo -e "\
+  $red+-----------------------------------------------------------+
+  |                                                           |
+  | ${bold}inotifywait$normal not found. Polled autocompile mode is enabled $red|
+  |                                                           |
+  |$normal Polling interval is $yellow$POLLED_AUTOCOMPILE$normal seconds.                            $red|
+  |$normal Polled autocompile mode is slightly slower than inotify.$red  |
+  |$normal So, be patient!                                         $red  |
   |                                                           |
   +-----------------------------------------------------------+$normal"
 fi
@@ -847,8 +905,11 @@ while true; do
     read -n 1 answer; echo
     case $answer in         # Options arranged alphabetically
     2)      MODE="PS2PDF"; compile "PS2PDF";;
-    [aA])   [[ $INOTIFYWAIT ]] || die "$answer: Invalid option!
-    This option will be enabled when you have inotifywait present"
+    [aA])   [[ "$INOTIFYWAIT" || $POLLED_AUTOCOMPILE -ne 0 ]] || \
+            die "$answer: Invalid option!
+    This option will be enabled when you have either inotifywait present,
+    or you have POLLED_AUTOCOMPILE set to a non-zero integer in the config.
+    "
             info "Autocompile mode ${bold}Enabled${normal}"
             infon "No. of times you want to compile automatically [default: 5]:"
             read answer; [[ $answer && $answer -gt 0 ]] || answer=5
