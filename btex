@@ -914,7 +914,7 @@ while true; do
             infon "No. of times you want to compile automatically [default: 5]:"
             read answer; [[ $answer && $answer -gt 0 ]] || answer=5
             infon "No. of secs of wait-time before autocompile aborts [default: 300]:"
-            read WAITTIME; [[ $WAITTIME && $WAITTIME -ge 0 ]] || WAITTIME=300
+            read WAITTIME; [[ $WAITTIME && $WAITTIME =~ ^[0-9]+$ ]] || WAITTIME=300
             autocompile $MODE $answer;;
     [bB])   if [[ -z $BIBTEX ]]; then
                 check bibtex && BIBTEX=1
