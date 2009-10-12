@@ -6,6 +6,7 @@
 
 
         ###                     Changelog                         ###
+        # 10/11/2009    Fixed a bug with a stray $DELAY remaining.  #
         # 07/21/2009    Added support for polled autocompile mode!  #
         #               This had been on the TODO for months!       #
         # 07/15/2009    Added support for editors other than gvim   #
@@ -878,7 +879,7 @@ elif [[ $POLLED_AUTOCOMPILE -eq 0 ]]; then
   |$normal before checking whether the latex file has been modified. $red|
   |                                                           |
   +-----------------------------------------------------------+$normal"
-  sleep $DELAY
+  sleep $SLEEP_TIME
 else
     echo -e "\
   $red+-----------------------------------------------------------+
