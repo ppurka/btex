@@ -6,6 +6,10 @@
 
 
         ###                     Changelog                         ###
+        # 12/20/2009    Added option -A to allow one to check status#
+        #               of all .tex files in current dir by inotify-#
+        #               wait. This allows one to have \include in   #
+        #               main file and still have autocompile working#
         # 10/11/2009    Fixed a bug with a stray $DELAY remaining.  #
         # 07/21/2009    Added support for polled autocompile mode!  #
         #               This had been on the TODO for months!       #
@@ -268,8 +272,9 @@ NON_STOP=1;
 #   <none>: latex is compiled as if it is typed as latex <file>.tex
 SILENT=
 COUNT=1
-INVERSE_SEARCH=          # Command line option when inv search is enabled
-INVERSE_SEARCH_CAPABLE=  # non-empty if latex takes -src-specials argument
+INOTIFYFILES=           # Set it to "*.tex" to check status of all .tex
+INVERSE_SEARCH=         # Command line option when inv search is enabled
+INVERSE_SEARCH_CAPABLE= # non-empty if latex takes -src-specials argument
 XPDF_OPTIONS=
 SLEEP_TIME=1
 # Possible modes: 
@@ -326,6 +331,8 @@ help(){ #{{{
     info "Options:
     -2 | --ps2pdf         Generate pdf from postscript output
     -a | --acroread       Use acrobat reader as pdf viewer in lieu of xpdf
+    -A | --all-tex        Run autocompile mode on all .tex files instead of
+                          just on the file provided in command line
     -B | --bibtex         Enable bibtex compilation
     -c | --choose4me      Choose some default settings: -i -n -r -s -T
     -d | --pdf            Output a pdf file,- this uses $PDFLaTeX
@@ -459,6 +466,7 @@ until [[ -z "$1" ]]; do
     case "$1" in
     -2 | --ps2pdf)      MODE="PS2PDF";;
     -a | --acroread)    check acroread && PDF_VIEWER="$CHECKED";;
+    -A | --all-tex)     INOTIFYFILES="*.tex" ;;
     -B | --bibtex)      check bibtex && BIBTEX=1;;
     -c | --choose4me)   # Choose a default set of options automatcially
         # -i -n -r -s -T
@@ -768,10 +776,10 @@ autocompile() { # {{{
     local TOTAL=$2
     local clr="$(tput el)"
     if [[ "$INOTIFYWAIT" ]]; then
-        #local WAITTIME=$3;     # WAITTIME should be already set
+        [[ "$INOTIFYFILES" ]] || INOTIFYFILES="$filename"
         for (( i=1; i<=$TOTAL; i+=1 )); do
             infor "${blue}Waiting$normal for change in the status of file ..."
-            if $INOTIFYWAIT -t $WAITTIME -qq ${filename}; then
+            if $INOTIFYWAIT -t $WAITTIME -qq $INOTIFYFILES; then
             # Use above line if you want to break out of autocompile after
             # some time, say 300s, if no modifications are made for 300s.
             # Otherwise use following line
