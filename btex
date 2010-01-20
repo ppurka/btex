@@ -6,6 +6,10 @@
 
 
         ###                     Changelog                         ###
+        # 01/18/2010    Updated help text to remove xpdf.           #
+        #               Fixed btex_editor="custom" to not warn.     #
+        #               Fixed switching on/off inv. search with some#
+        #               editor other than gvim.                     #
         # 12/20/2009    Added option -A to allow one to check status#
         #               of all .tex files in current dir by inotify-#
         #               wait. This allows one to have \include in   #
@@ -330,7 +334,7 @@ help(){ #{{{
     info "Usage:     ${0##*\/} [<options>] [<filename>.tex]"
     info "Options:
     -2 | --ps2pdf         Generate pdf from postscript output
-    -a | --acroread       Use acrobat reader as pdf viewer in lieu of xpdf
+    -a | --acroread       Use acrobat reader as pdf viewer in lieu of ${PDF_VIEWER##*/}
     -A | --all-tex        Run autocompile mode on all .tex files instead of
                           just on the file provided in command line
     -B | --bibtex         Enable bibtex compilation
@@ -381,7 +385,10 @@ set_xdvi() { # {{{
     [[ ${DVI_VIEWER/xdvi/} = $DVI_VIEWER ]] && return
     
     # If btex_editor is non-empty then start using it
-    if [[ "$btex_editor" ]]; then
+    if [[ "$btex_editor" = "custom" ]]; then
+        # Nothing to do here
+        echo -n ""
+    elif [[ "$btex_editor" ]]; then
         which $btex_editor >& /dev/null  || {
             Err -w "$cyan$btex_editor$normal is not in your \$PATH.
     I hope the name is correctly specified."
@@ -402,9 +409,9 @@ set_xdvi() { # {{{
                     # passed to xdvi. The script to be run should be 
                     # $config_dir/btex_custom_editor
             if [[ -x "$config_dir/btex_custom_editor" ]]; then
-                btex_editor="$( $config_dir/btex_custom_editor )"
+                edit_cmd="$( $config_dir/btex_custom_editor )"
             else    # Else make this variable empty.
-                btex_editor=""
+                edit_cmd=""
             fi;;
         ""|gvim|rgvim|gview|rgview|eview|vim|rview|evim|*vimdiff)
             # If the variable btex_editor is empty then we will
@@ -432,9 +439,13 @@ set_xdvi() { # {{{
                 server="$($btex_editor --serverlist | tail -n +$server | \
                     head -n 1)"
                 if [[ "$server" ]]; then
-                    btex_editor="$btex_editor --servername $server --remote +%l %f"
+                    edit_cmd="$btex_editor --servername $server --remote +%l %f"
                 else
-                    btex_editor=""
+                    Err -w "Either the file $filename is not open, or the filename
+    was not presented in the command line while opening gvim.
+    Couldn't determine the gvim server which has the file open. Inverse
+    search will not work."
+                    edit_cmd=""
                 fi
             fi ;;
             *)  Err "$_editor: Unknown editor. There is no support for this
@@ -944,7 +955,7 @@ while true; do
             $PDF_VIEWER $PDF_VIEWER_OPTIONS $XPDF_OPTIONS $file.pdf >& \
                 /dev/null & ;;
     [iI])   if [[ $INVERSE_SEARCH ]]; then
-                INVERSE_SEARCH=; btex_editor=; echo
+                INVERSE_SEARCH=; edit_cmd=; echo
                 info "Disabling inverse search during compilation. Restart ${DVI_VIEWER##*\/}."
                 sleep $SLEEP_TIME
             elif [[ $INVERSE_SEARCH_CAPABLE ]]; then
@@ -1009,9 +1020,9 @@ while true; do
                     "The TEX file has been modified since this DVI was created"
                     sleep $SLEEP_TIME
                 }
-                if [[ "$btex_editor" ]]; then
-                    # btex_editor is nonempty if xdvi is used
-                    $DVI_VIEWER $DVI_VIEWER_OPTIONS -editor "$btex_editor" \
+                if [[ "$edit_cmd" ]]; then
+                    # edit_cmd is nonempty if xdvi is used
+                    $DVI_VIEWER $DVI_VIEWER_OPTIONS -editor "$edit_cmd" \
                         $file.dvi >& /dev/null &
                 else
                     $DVI_VIEWER $DVI_VIEWER_OPTIONS $file.dvi >& /dev/null &
