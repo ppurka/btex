@@ -6,6 +6,8 @@
 
 
         ###                     Changelog                         ###
+        # 02/22/2010    Fix detection of errors when multiple latex #
+        #               files are being compiled.                   #
         # 02/20/2010    Rearrange the functions so that it is easier#
         #               to locate them.                             #
         #               Fix bibliography detection when it is not   #
@@ -653,37 +655,37 @@ run_latex() {
         _no-interaction_silent_nowarning)
             $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
             $filename >&1 | sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_nowarning)
             $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
             $filename >&1 | sed -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
-                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
+                -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent_nowarning) 
             $LaTeX $LaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_silent)
             $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
             $filename >&1 | sed -ne \
                 "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction)
             $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
             $filename >&1 | sed -e \
                 "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
                 -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
-                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
+                -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent) 
             $LaTeX $LaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         *)  $LaTeX $LaTeX_Opts $INVERSE_SEARCH $filename
             status=$? ;;
@@ -704,38 +706,38 @@ run_pdflatex() {
             $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode $filename \
             >&1 | sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_nowarning)
             $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode $filename \
             >&1 | sed -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
-                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
+                -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent_nowarning) 
             $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction_silent)
             $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode $filename \
             >&1 | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         _no-interaction)
             $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode $filename \
             >&1 | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
                 -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
-                -e "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
+                -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status=${PIPESTATUS[0]};;
         _silent) 
             $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH $filename >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
-                -ne "/$filename:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
+                -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status=${PIPESTATUS[0]};;
         *)  $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH $filename
             status=$? ;;
