@@ -6,6 +6,7 @@
 
 
         ###                     Changelog                         ###
+        # 03/11/2010    Enable support for index in latex file      #
         # 02/22/2010    Fix detection of errors when multiple latex #
         #               files are being compiled.                   #
         # 02/20/2010    Rearrange the functions so that it is easier#
@@ -116,9 +117,14 @@
         #                                                           #
         # Bibliography: Check for other means of calling biblio     #
         #               Check for \input{file} and check file for   #
-        #               bibliography content                        #
+        #               bibliography content -- Partially done      #
         # Bibtex:       Check for bibtex autodetection              #
         #               Also, need to look for \input{file}, etc    #
+        # 
+        # IDEA: Use prime numbers to index -T, -s and nowarning.    #
+        #       For ex. 2, 3, 5: multiply them and we will always   #
+        #       get a unique product depending on what is enabled   #
+        #       Default can be 1 (none of the modes are enabled)    #
         #-----------------------------------------------------------#
 
 . `which my_bash_functions 2> /dev/null` || {
@@ -371,7 +377,9 @@ NON_STOP=1;
 #       Same as above, except that warnings are not shown
 #   <none>: latex is compiled as if it is typed as latex <file>.tex
 SILENT=
+BIBLIOGRAPHY=           # This is set to 1 when bibliography is detected
 COUNT=1
+INDEX=                  # This is set to 1 when index is detected
 INOTIFYFILES=           # Set it to "*.tex" to check status of all .tex
 INVERSE_SEARCH=         # Command line option when inv search is enabled
 INVERSE_SEARCH_CAPABLE= # non-empty if latex takes -src-specials argument
@@ -500,6 +508,7 @@ until [[ -z "$1" ]]; do
     -E | --editor)      btex_editor="$2"; shift ;;
     -h | --help)        help "$2"; exit ;;
     -i | --inv-search)  INVERSE_SEARCH="-src-specials" ;;
+    -I | --index)       INDEX=1 ;;
     -n | --no-postscript) MODE="NO_POSTSCRIPT";;
     -nc| --no-color)    unset ${COLORS[@]} ;;
     -o | --pdf_ps)      MODE="PDF_POSTSCRIPT";;
@@ -604,23 +613,29 @@ compile_pdf() {
         fi
     done
     run_pdflatex "1st" || return
-    if [[ $BIBTEX ]]; then
-        run_bibtex; run_pdflatex "2nd"; run_pdflatex "3rd"
-    elif [[ $BIBLIOGRAPHY ]]; then
+    if [[ $BIBTEX || $INDEX ]]; then
+        [[ $BIBTEX ]]   && run_bibtex
+        [[ $INDEX ]]    && run_index
+        run_pdflatex "2nd" && run_pdflatex "3rd"
+    elif [[ $BIBLIOGRAPHY || $INDEX ]]; then
         # If it has come till here, then pdflatex ran ok earlier
         # So, we don't need to return on error
+        [[ $INDEX ]]    && run_index
         run_pdflatex "2nd"; run_pdflatex "3rd"
     fi
 }
 
 compile_ps() {
     run_latex "1st" || return
-    if [[ $BIBTEX ]]; then
-        run_bibtex; run_latex "2nd"; run_latex "3rd"
-    elif [[ $BIBLIOGRAPHY ]]; then
+    if [[ $BIBTEX || $INDEX ]]; then
+        [[ $BIBTEX ]]   && run_bibtex 
+        [[ $INDEX ]]    && run_index
+        run_latex "2nd" && run_latex "3rd"
+    elif [[ $BIBLIOGRAPHY || $INDEX ]]; then
         # If it has come till here, then latex ran ok earlier
         # So, we don't need to return on error
-        run_latex "2nd"; run_latex "3rd"
+        [[ $INDEX ]]    && run_index
+        run_latex "2nd" && run_latex "3rd"
     fi
 
     case $1 in
@@ -637,6 +652,12 @@ compile_ps() {
     esac
 }
 
+# Use index_is_present <filename>
+index_is_present() {
+    grep -q -s '^[[:space:]]*\\makeindex' $@ && return 0
+    return 1
+}
+
 run_bibtex() {
     infor "Running bibtex"
     if [[ $SILENT ]]; then
@@ -645,6 +666,17 @@ run_bibtex() {
     else
         bibtex $file
         [[ $? -ne 0 && -z $NON_STOP ]] && die "$filename: bibtex failed"
+    fi
+}
+
+run_index() {
+    infor "Running makeindex"
+    if [[ $SILENT ]]; then
+        makeindex -q $file
+        [[ $? -ne 0 && -z $NON_STOP ]] && die "$filename: makeindex failed"
+    else
+        makeindex $file
+        [[ $? -ne 0 && -z $NON_STOP ]] && die "$filename: makeindex failed"
     fi
 }
 
@@ -894,6 +926,14 @@ if bibliography_is_present "$filename" || \
     sleep $SLEEP_TIME
 fi
 
+if index_is_present "$filename"|| ( [[ "$INOTIFYFILES" = "*.tex" ]] && \
+    index_is_present "*.tex" ); then
+    info "Detected index in $filename.
+    $LaTeX/$PDFLaTeX will be run once, then makeindex will be run,
+    then $LaTeX/$PDFLaTeX will be run two more times"
+    INDEX=1
+    sleep $SLEEP_TIME
+fi
 
 # Compile the file with command line parameters
 compile $MODE
