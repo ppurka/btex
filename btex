@@ -6,6 +6,8 @@
 
 
         ###                     Changelog                         ###
+        # 03/30/2010    Change to ps2pdf from epstopdf so that pdf  #
+        #               files with embedded fonts can be created    #
         # 03/11/2010    Enable support for index in latex file      #
         # 02/22/2010    Fix detection of errors when multiple latex #
         #               files are being compiled.                   #
@@ -608,7 +610,8 @@ compile_pdf() {
     find *.eps 2>/dev/null | while read i; do
         if [[ "${i%\.*}.pdf" -ot "$i" ]]; then
             infon "Converting ${bold}$i${normal} to ${bold}${i%\.*}.pdf${normal} ... "
-            epstopdf $i --outfile="${i%\.*}.pdf"
+            # -dEPSCrop crops to figure. /prepress embeds fonts
+            ps2pdf -dPDFSETTINGS=/prepress -dEPSCrop "$i"
             success $?
         fi
     done
@@ -886,7 +889,7 @@ success() {
 # Some error checking
 check $LaTeX
 [[ "$MODE" = *POSTSCRIPT || $MODE = PS2PDF ]] && check dvips
-[[ "$MODE" = "PDF" ]] && check $PDFLaTeX && check epstopdf
+[[ "$MODE" = "PDF" ]] && check $PDFLaTeX && check ps2pdf
 
 
 # All about files
