@@ -6,6 +6,9 @@
 
 
         ###                     Changelog                         ###
+        # 09/14/2010    Reorder filename to before space check. This#
+        #               allows *directories* with spaces to be used.#
+        #               Auto-detect bibtex. It was long time todo :)#
         # 03/30/2010    Change to ps2pdf from epstopdf so that pdf  #
         #               files with embedded fonts can be created    #
         # 03/11/2010    Enable support for index in latex file      #
@@ -587,6 +590,17 @@ bibliography_is_present() {
         $@ && return 0
     grep -q -s '^[[:space:]]*\\bibliography[[:space:]]*{[^}]*}' $@ && \
         return 0
+    return 1
+}
+
+# Usage: bibtex_is_present <filename|*.tex> [<filename2>]
+bibtex_is_present() {
+#    grep -q -s \
+#        '^[[:space:]]*\\bibliographystyle[[:space:]]*{[[:space:]]*[[:alnum:]]*[[:space:]]*}'\
+#        $@ && \
+        grep -q -s \
+        '^[[:space:]]*\\bibliography[[:space:]]*{[[:space:]]*[[:alnum:]]*.bib[[:space:]]*}' $@ && \
+        return 0
 }
 
 compile() {
@@ -898,13 +912,14 @@ if [[ -z ${filename} ]]; then
     filename="$FILEPATH"
     unset FILEPATH
 fi
+# Change to the directory containing the tex file, else a lot will go awry
+[[ $filename = */* ]] && cd "${filename%\/*}"
+filename="${filename##*\/}"
+# Check for latex files with spaces
 if [[ ! -f "${filename}" || "${filename/ /}" != "${filename}" ]]; then
     echo; die "${filename} does not exist
     Do not enter filenames with spaces in them\n"
 fi
-# Change to the directory containing the tex file, else a lot will go awry
-[[ $filename = */* ]] && cd "${filename%\/*}"
-filename="${filename##*\/}"
 file="${filename%\.tex}"
 
 
@@ -920,7 +935,13 @@ fi
 # Autodetect bibliography - not quite complete - also need auto-bibtex
 # Need to check for \input{filename} which contains bibliography
 # information
-if bibliography_is_present "$filename" || \
+if bibtex_is_present "$filename" || \
+    (  [[ "$INOTIFYFILES" = "*.tex" ]] && bibtex_is_present "*.tex" ); then
+    info "Detected bibtex in $filename.
+    $LaTeX/$PDFLaTeX will be run thrice"
+    BIBTEX=1
+    sleep $SLEEP_TIME
+elif bibliography_is_present "$filename" || \
     ( [[ "$INOTIFYFILES" = "*.tex" ]] && bibliography_is_present "*.tex" \
     ); then
     info "Detected bibliography in $filename.
