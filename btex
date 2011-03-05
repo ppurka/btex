@@ -6,6 +6,7 @@
 
 
         ###                     Changelog                         ###
+        # 04/06/2011    Bugfix: fix display of dvi/pdf key bindings #
         # 02/04/2011    - Ensure all variables are quoted where reqd#
         #               - Almost all config var are monkey-proof now#
         #               - Fix help text for -c (it now includes -w) #
@@ -947,9 +948,9 @@ show_menu() {
     [[ "$PS_VIEWER"  ]] && \
         psv="${g}L$n: Launch ps viewer (${PS_VIEWER##*\/})"
     [[ "$DVI_VIEWER" ]] && \
-        dviv="${g}L$n: Launch dvi viewer (${DVI_VIEWER##*\/})"
+        dviv="${g}X$n: Launch dvi viewer (${DVI_VIEWER##*\/})"
     [[ "$PDF_VIEWER" ]] && \
-        pdfv="${g}L$n: Launch pdf viewer (${PDF_VIEWER##*\/})"
+        pdfv="${g}F$n: Launch pdf viewer (${PDF_VIEWER##*\/})"
     [[ "$INOTIFYWAIT" || "$POLLED_AUTOCOMPILE" -gt 0 ]] && \
         auto="    ${g}A${n}: Enable Autocompile mode\n"
     [[ "$SILENT" -gt 1 ]] && warn="${g}W$n: Enable output of warnings"
