@@ -6,6 +6,8 @@
 
 
         ###                     Changelog                         ###
+        # 06/18/2011    Bugfix: Quote xterm command properly && exec#
+        # 05/20/2011    Bugfix: add 0 to return in clean_files      #
         # 04/06/2011    Bugfix: fix display of dvi/pdf key bindings #
         # 02/04/2011    - Ensure all variables are quoted where reqd#
         #               - Almost all config var are monkey-proof now#
@@ -479,7 +481,7 @@ SILENT=1
 
 #echo $-
 if [[ "$DISPLAY" && -z "$@" ]] && ! tty -s; then 
-    xterm -hold -e "${0}" -h; exit
+    exec xterm -hold -e "$(dirname "$0")/$(basename "$0")" -h
 fi
 
 until [[ -z "$1" ]]; do
@@ -637,7 +639,7 @@ can_autocompile() {
 # Remove temporary latex files as specified in the variable CLEAN_FILES
 # Usage: clean_files
 clean_files() {
-    [[ "$CLEAN_FILES" ]] || return
+    [[ "$CLEAN_FILES" ]] || return 0
     # If _silent mode is on then the user doesn't want tons of output
     if [[ "$(( ${SILENT}%3 ))" -eq 0 ]]; then
         infon "Removing files ending with extension"
