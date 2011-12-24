@@ -6,6 +6,7 @@
 
 
         ###                     Changelog                         ###
+        # 12/23/2011    Bugfix: Fix detection of bibtex.            #
         # 06/18/2011    Bugfix: Quote xterm command properly && exec#
         # 05/20/2011    Bugfix: add 0 to return in clean_files      #
         # 04/06/2011    Bugfix: fix display of dvi/pdf key bindings #
@@ -586,8 +587,8 @@ bibtex_is_present() {
 #    grep -q -s \
 #        '^[[:space:]]*\\bibliographystyle[[:space:]]*{[[:space:]]*[[:alnum:]]*[[:space:]]*}'\
 #        $@ && \
-        grep -q -s \
-        '^[[:space:]]*\\bibliography[[:space:]]*{[[:space:]]*[[:alnum:]]*.bib[[:space:]]*}' $@ && \
+        grep -q -s -E -e \
+        '^[[:space:]]*\\bibliography[[:space:]]*{[[:space:]]*[[:alnum:]]*(\.bib)?[[:space:]]*}' $@ && \
         return 0
 }
 
