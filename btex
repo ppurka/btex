@@ -4,9 +4,23 @@
         #                                       -ppurka             #
         #-----------------------------------------------------------#
 
+        #----------------- License: GPL-3 or later -----------------#
+        # Copyright (C) 2007 - 2011  P. Purkayastha                 #
+        # Contact: ppurka _at_ gmail _dot_ com                      #
+        # This program comes with ABSOLUTELY NO WARRANTY;           #
+        # This is free software, and you are welcome to redistribute#
+        # it under certain conditions;                              #
+        #                                                           #
+        # For a brief summary of the license see the file COPYING   #
+        # that is distributed with this program.                    #
+        #                                                           #
+        # For the full text of the license see                      #
+        # http://www.gnu.org/licenses/gpl-3.0.html                  #
+        #-----------------------------------------------------------#
 
         ###                     Changelog                         ###
         # 12/25/2011    More silent output from bibtex.             #
+        #               More documentation and contact information. #
         # 12/23/2011    Bugfix: Fix detection of bibtex.            #
         # 06/18/2011    Bugfix: Quote xterm command properly && exec#
         # 05/20/2011    Bugfix: add 0 to return in clean_files      #
