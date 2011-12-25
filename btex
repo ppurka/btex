@@ -6,6 +6,7 @@
 
 
         ###                     Changelog                         ###
+        # 12/25/2011    More silent output from bibtex.             #
         # 12/23/2011    Bugfix: Fix detection of bibtex.            #
         # 06/18/2011    Bugfix: Quote xterm command properly && exec#
         # 05/20/2011    Bugfix: add 0 to return in clean_files      #
@@ -563,9 +564,6 @@ bibliography_is_present() {
 
 # Usage: bibtex_is_present <filename|*.tex> [<filename2>]
 bibtex_is_present() {
-#    grep -q -s \
-#        '^[[:space:]]*\\bibliographystyle[[:space:]]*{[[:space:]]*[[:alnum:]]*[[:space:]]*}'\
-#        $@ && \
         grep -q -s -E -e \
         '^[[:space:]]*\\bibliography[[:space:]]*{[[:space:]]*[[:alnum:]]*(\.bib)?[[:space:]]*}' $@ && \
         return 0
@@ -724,24 +722,24 @@ on_trap() {
 
 run_bibtex() {
     infor "Running bibtex"
-    if [[ "$SILENT" -gt 1 ]]; then
+    if [[ "$SILENT" -gt 2 ]]; then
+        bibtex --terse "$file" &> /dev/null
+    elif [[ "$SILENT" -eq 2 ]]; then
         bibtex --terse "$file"
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: bibtex failed"
     else
         bibtex "$file"
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: bibtex failed"
     fi
+    [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: bibtex failed"
 }
 
 run_index() {
     infor "Running makeindex"
     if [[ "$SILENT" -gt 1 ]]; then
         makeindex -q "$file"
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: makeindex failed"
     else
         makeindex "$file"
-        [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: makeindex failed"
     fi
+    [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: makeindex failed"
 }
 
 run_latex() {
