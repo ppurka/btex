@@ -140,33 +140,12 @@
         #  early 2006?  First version of the script                 #
         #-----------------------------------------------------------#
 
-        ###                         TODO (04/28/2007)             ###
-        # Enable a silent mode, where only latex errors are shown   #
-        #   need to look into --interaction nonstopmode             #
-        #   and make the latex compilation handling more modular    #
-        # The above is done, but without --interaction nonstopmode  #
-        # would be interesting to see if it can be improved.        #
-        # --- DONE, with caveat: the output is colored but all the  #
-        # lines get colored. It would be nice to have  warning or   #
-        # error's only first lines to get colored. Can't seem to    #
-        # find a sed command which can do this:                     #
-        # /start/,/end/{ color only first line of this para }       #
-        #                                                           #
-        # Enable an auto mode, where the latex file will be         #
-        # automatically compiled whenever the timestamp of the tex  #
-        # file changes  --- DONE!                                   #
-        #                                                           #
+        ###                         TODO (21/25/2011)             ###
         # Bibliography: Check for other means of calling biblio     #
         #               Check for \input{file} and check file for   #
         #               bibliography content -- Partially done      #
         # Bibtex:       Check for bibtex autodetection              #
         #               Also, need to look for \input{file}, etc    #
-        # 
-        # IDEA: Use prime numbers to index -T, -s and nowarning.    #
-        #       For ex. 2, 3, 5: multiply them and we will always   #
-        #       get a unique product depending on what is enabled   #
-        #       Default can be 1 (none of the modes are enabled)    #
-        #       This is now DONE! :)
         #-----------------------------------------------------------#
 
 . `which my_bash_functions 2> /dev/null` || {
