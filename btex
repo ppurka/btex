@@ -183,7 +183,7 @@ check() {
     return 0
 }
 
-    
+# Help me!! 
 help() {
     echo
     echo -e " $yellow ${self}:$normal"
@@ -295,6 +295,7 @@ help() {
     "
 }
 
+# Usage: set_beamer_options
 set_beamer_options() {
     if [[ "$DVIPS_PAPER_OPTIONS" ]]; then
         DVIPS_PAPER_OPTIONS=""
@@ -305,6 +306,7 @@ set_beamer_options() {
     fi
 }
 
+# Usage: setup_config_file
 setup_config_file() {
     info "$blue$config_dir/$config_file$normal config file not found. Creating ..."
     [[ ! -d "$config_dir" ]] && {
@@ -512,6 +514,9 @@ done
 # Other functions used in the script. {{{
 # The functions are all presented in alphabetical order.
 
+# This function waits for the tex file to update and then compiles it.
+# Usage: autocompile <mode>
+# <mode> is one of the possible modes as set in $MODE
 autocompile() {
     local clr="$(tput el)" i="1" MODE="${1}"
     [[ "$INOTIFYFILES" ]] || INOTIFYFILES="$filename"
@@ -634,6 +639,8 @@ clean_files() {
     echo
 }
 
+# Usage: compile <mode>
+# <mode> is one of the possible modes as set in $MODE
 compile() {
     case "${1}" in
         ASK_POSTSCRIPT) compile_ps ask ;;
@@ -650,6 +657,7 @@ compile() {
     esac
 }
 
+# Usage: compile_pdf
 compile_pdf() {
     info "Converting the (newer) eps images to pdf ..."
     find *.eps 2>/dev/null | while read i; do
@@ -673,6 +681,7 @@ compile_pdf() {
     fi
 }
 
+# Usage: compile_ps
 compile_ps() {
     run_latex "1st" || return
     if [[ "$BIBTEX" || "$INDEX" ]]; then
@@ -700,7 +709,8 @@ compile_ps() {
     esac
 }
 
-# Use index_is_present <filename>
+# Whether index is to be generated or not.
+# Usage: index_is_present <filename>
 index_is_present() {
     grep -q -s '^[[:space:]]*\\makeindex' $@ && return 0
     return 1
@@ -720,6 +730,7 @@ on_trap() {
     fi
 }
 
+# Usage: run_bibtex
 run_bibtex() {
     infor "Running bibtex"
     if [[ "$SILENT" -gt 2 ]]; then
@@ -732,6 +743,7 @@ run_bibtex() {
     [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: bibtex failed"
 }
 
+# Usage: run_index
 run_index() {
     infor "Running makeindex"
     if [[ "$SILENT" -gt 1 ]]; then
@@ -742,6 +754,9 @@ run_index() {
     [[ $? -ne 0 && -z "$NON_STOP" ]] && die "$filename: makeindex failed"
 }
 
+# Run the latex command. This accepts an additional parameter which is the
+# run that is being performed. This parameter will be displayed in output.
+# Usage: run_latex "<1st|2nd|3rd>"
 run_latex() {
     local status
     infor "$cyan$1$normal run of $LaTeX"
@@ -786,6 +801,9 @@ run_latex() {
     fi
 }
 
+# Run the pdflatex command. This accepts an additional parameter which is
+# the run that is being performed. This parameter will be displayed in o/p.
+# Usage: run_pdflatex "<1st|2nd|3rd>"
 run_pdflatex() {
     local status
     infor "$cyan$1$normal run of $LaTeX"
@@ -832,6 +850,8 @@ run_pdflatex() {
     fi
 }
 
+# Function to make inverse search work between xdvi and editor (gvim)
+# Usage: set_xdvi
 set_xdvi() {
     # The following algo for gvim runs only if btex_editor is empty or it
     # has been set to gvim
@@ -917,6 +937,9 @@ set_xdvi() {
         rm -f "$TMP_FILE"
 }
 
+# Shows a menu on the terminal. The options in the menu change depending on
+# what is configured in the config_file, or on what is actually enabled.
+# Usage: show_menu
 show_menu() {
     echo; echo
     local g="$green" n="$normal"
@@ -1009,6 +1032,8 @@ $auto" # if auto is empty, this acts as a \n, o/w auto provides \n
                      echo -ne "[Y]): "
 }
 
+# Print a nice message depending on the exit status of the command run.
+# Usage: success <status>
 success() {
     ([[ "${1}" -ne 0 ]] && echo -e "${red}Failed!${normal}") ||\
         echo -e "${green}Done!${normal}"
