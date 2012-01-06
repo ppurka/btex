@@ -259,44 +259,44 @@ help() {
     info "This program is used to compile latex files and output ps/pdf files"
     info "Usage:     ${self} [<options>] [<filename>.tex]"
     info "Options:
-    -2 | --ps2pdf         Generate pdf from postscript output
-    -a | --autocompile    Enable autocompile mode. The latex file will be
+    -2 , --ps2pdf         Generate pdf from postscript output
+    -a , --autocompile    Enable autocompile mode. The latex file will be
                           compiled automatically whenever there is any
                           change in the file.
                           Run $green$self -h autocompile$normal for more info
-    -A | --all-tex        Run autocompile mode on all .tex files instead of
+    -A , --all-tex        Run autocompile mode on all .tex files instead of
                           just on the file provided in command line
-    -ar| --acroread       Use acrobat reader as pdf viewer in lieu of the
+    -ar, --acroread       Use acrobat reader as pdf viewer in lieu of the
                           default set in the config file
-    -B | --bibtex         Enable bibtex compilation
-    -c | --choose4me      Choose some default settings: -i -r -s -T -w
-    -C | --clean          Remove the temporary latex files upon exiting the
+    -B , --bibtex         Enable bibtex compilation
+    -c , --choose4me      Choose some default settings: -i -r -s -T -w
+    -C , --clean          Remove the temporary latex files upon exiting the
                           script. The list of temporary files that will be
                           removed can be configured in the config file.
-    -d | --pdf            Output a pdf file,- this uses $PDFLaTeX
-    -e | --beamer         Toggle beamer mode: disable $DVIPS_PAPER_OPTIONS option in dvips
-    -E | --editor <editor> Provide an editor to be used with xdvi for
+    -d , --pdf            Output a pdf file,- this uses $PDFLaTeX
+    -e , --beamer         Toggle beamer mode: disable $DVIPS_PAPER_OPTIONS option in dvips
+    -E , --editor <editor> Provide an editor to be used with xdvi for
                           inverse search. 
                           Run $green$self -h editor$normal for more info
-    -h | --help           This help text
+    -h , --help           This help text
     -h autocompile        Help information on autocompile mode
     -h editor             Provide information on set-up of editor for inverse
                           search with xdvi
     -h inv-search         Help information on inverse search
-    -i | --inv-search     Enable inverse search in dvi
-    -n | --no-postscript  Output only dvi file
-    -nc| --no-color       Do not use color in output
-    -o | --pdf_ps         Generate ps automatically and also pdf via $PDFLaTeX
-    -p | --postscript     Run dvips automatically, providing ps output
-    -r | --recursive      Recursively compile the source. Otherwise
+    -i , --inv-search     Enable inverse search in dvi
+    -n , --no-postscript  Output only dvi file
+    -nc, --no-color       Do not use color in output
+    -o , --pdf_ps         Generate ps automatically and also pdf via $PDFLaTeX
+    -p , --postscript     Run dvips automatically, providing ps output
+    -r , --recursive      Recursively compile the source. Otherwise
                           the program will compile once and exit
-    -s | --silent         Print only errors/warnings output by $LaTeX/$PDFLaTeX
+    -s , --silent         Print only errors/warnings output by $LaTeX/$PDFLaTeX
     -t <paper type>       Run dvips with -t<paper type> option.
                           Default paper type used is ${bold}letter${normal}
-    -T | --no-interaction Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
-    -w | --no-warning     If -s is enabled, then disable output of warnings
+    -T , --no-interaction Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
+    -w , --no-warning     If -s is enabled, then disable output of warnings
                           If -T is enabled, then disable highlight of warnings
-    -z | --stop           Exit script if $LaTeX gives errors
+    -z , --stop           Exit script if $LaTeX gives errors
     "
     info "If multiple -d,-n,-o,-p,-2 are given then the last one will be used
     "
@@ -519,6 +519,10 @@ until [[ -z "$1" ]]; do
     -w | --no-warning)  [[ $(( ${SILENT}%5 )) -eq 0 ]] || \
         SILENT=$(( ${SILENT}*5 )) ;;
     -z | --stop)        unset NON_STOP ;;
+    -*=*) _var_="$1"
+		shift
+		set -- for_shift_below "${_var_%=*}" "${_var_#*=}" "$@"
+		unset _var_ ;;
     -*) help
         die "${red}$1${normal}: Invalid Option!\n" ;;
     *)  filename="$1" ;;
