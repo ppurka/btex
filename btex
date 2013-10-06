@@ -21,6 +21,7 @@
         ###                     Changelog                         ###
         # 10/06/2013    Parse short option commands as getopt does. #
         #               Therefore, -ar and -nc are not available.   #
+        #               Raise an error on invalid dvips paper opts. #
         # 12/25/2011    More silent output from bibtex.             #
         #               More documentation and contact information. #
         # 12/23/2011    Bugfix: Fix detection of bibtex.            #
@@ -197,6 +198,15 @@ check() {
     fi
     CHECKED="$exe"
     return 0
+}
+
+# Usage: check_dvips_paper_options <paper>
+check_dvips_paper_options() {
+    case "$1" in
+        a3|a4|landscape|ledger|legal|letter) ;;
+        *)  die "$red$1$normal: Invalid dvips paper option!
+    Valid options are: a3, a4, landscape, ledger, legal, letter." ;;
+    esac
 }
 
 # Help me!!
@@ -1233,6 +1243,7 @@ check "$LaTeX"
 [[ "$MODE" = *POSTSCRIPT ]]  && check dvips
 [[ "$MODE" = "PS2PDF"    ]]  && check dvips       && check ps2pdf
 [[ "$MODE" = "PDF"       ]]  && check "$PDFLaTeX" && check ps2pdf
+check_dvips_paper_options "$PAPER"
 # Ensure that warnings are enabled only when either non-interaction or
 # silent has been enabled.
 [[ "$SILENT" -eq 5 ]] && {
