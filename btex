@@ -19,6 +19,8 @@
         #-----------------------------------------------------------#
 
         ###                     Changelog                         ###
+        # 10/06/2013    Parse short option commands as getopt does. #
+        #               Therefore, -ar and -nc are not available.   #
         # 12/25/2011    More silent output from bibtex.             #
         #               More documentation and contact information. #
         # 12/23/2011    Bugfix: Fix detection of bibtex.            #
@@ -125,7 +127,7 @@
         # 04/21/2008    Support for bibtex, slight reorganization   #
         # 03/31/2008    Enabled inverse search for all latex files  #
         #               through the -src-specials command option    #
-        #               This means that srcltx is not reqd. now     # 
+        #               This means that srcltx is not reqd. now     #
         #               Rewrote help and provided command line opt. #
         # 02/28/2008    Fixed bugs in set_xdvi which was being used #
         #               to enable inverse search in xdvi            #
@@ -197,14 +199,14 @@ check() {
     return 0
 }
 
-# Help me!! 
+# Help me!!
 help() {
     echo
     echo -e " $yellow ${self}:$normal"
     case "$1" in
         "autocompile")  info "${bold}Autocompile:$normal
     In the autocompile mode, the script waits for the tex file to change
-    and once it changes, the script compiles the file. 
+    and once it changes, the script compiles the file.
 
     The autocompile mode can be enabled if you have inotifywait installed
     or if you have enabled ${bold}POLLED_AUTOCOMPILE$normal in the config
@@ -216,7 +218,7 @@ help() {
     autocompile mode and continues with the rest of the script. But
     pressing ${bold}Ctrl-C$normal outside the autocompile mode, simply
     exits the script.
-    
+
     If you want the script to watch for changes in all the tex files in the
     directory, then pass the -A argument to $yellow${self}$normal
     "
@@ -226,7 +228,7 @@ help() {
     enabling inverse search in xdvi.
     The editors which are automatically configured to work with the inverse
     search of xdvi are any of the vim/gvim variant.
-    
+
     You can set the editor permanently in $blue$config_dir/$config_file$normal
     by setting the ${bold}btex_editor$normal variable.
     You can temporarily set some vim/gvim variant other than the one set in
@@ -250,53 +252,53 @@ help() {
       automatically determines the correct gvim if multiple gvims are running.
     - The dvi viewer which is automatically set up by this script is xdvi.
       Other dvi viewers will need to be configured separately.
-    - If you use okular, then inverse search may be possible even in 
+    - If you use okular, then inverse search may be possible even in
       pdf files. Search Google for pdfsync and okular.
-      " 
+      "
         return ;;
     esac
 
     info "This program is used to compile latex files and output ps/pdf files"
     info "Usage:     ${self} [<options>] [<filename>.tex]"
     info "Options:
-    -2 , --ps2pdf         Generate pdf from postscript output
-    -a , --autocompile    Enable autocompile mode. The latex file will be
+    -2, --ps2pdf          Generate pdf from postscript output
+    -a, --autocompile     Enable autocompile mode. The latex file will be
                           compiled automatically whenever there is any
                           change in the file.
                           Run $green$self -h autocompile$normal for more info
-    -A , --all-tex        Run autocompile mode on all .tex files instead of
+    -A, --all-tex         Run autocompile mode on all .tex files instead of
                           just on the file provided in command line
-    -ar, --acroread       Use acrobat reader as pdf viewer in lieu of the
-                          default set in the config file
-    -B , --bibtex         Enable bibtex compilation
-    -c , --choose4me      Choose some default settings: -i -r -s -T -w
-    -C , --clean          Remove the temporary latex files upon exiting the
+    -B, --bibtex          Enable bibtex compilation
+    -c, --choose4me       Choose some default settings: -i -r -s -T -w
+    -C, --clean           Remove the temporary latex files upon exiting the
                           script. The list of temporary files that will be
                           removed can be configured in the config file.
-    -d , --pdf            Output a pdf file,- this uses $PDFLaTeX
-    -e , --beamer         Toggle beamer mode: disable $DVIPS_PAPER_OPTIONS option in dvips
-    -E , --editor <editor> Provide an editor to be used with xdvi for
-                          inverse search. 
+    -d, --pdf             Output a pdf file,- this uses $PDFLaTeX
+    -e, --beamer          Toggle beamer mode: disable $DVIPS_PAPER_OPTIONS option in dvips
+    -E, --editor <editor> Provide an editor to be used with xdvi for
+                          inverse search.
                           Run $green$self -h editor$normal for more info
-    -h , --help           This help text
+    -h, --help            This help text
     -h autocompile        Help information on autocompile mode
     -h editor             Provide information on set-up of editor for inverse
                           search with xdvi
     -h inv-search         Help information on inverse search
-    -i , --inv-search     Enable inverse search in dvi
-    -n , --no-postscript  Output only dvi file
-    -nc, --no-color       Do not use color in output
-    -o , --pdf_ps         Generate ps automatically and also pdf via $PDFLaTeX
-    -p , --postscript     Run dvips automatically, providing ps output
-    -r , --recursive      Recursively compile the source. Otherwise
+    -i, --inv-search      Enable inverse search in dvi
+    -n, --no-postscript   Output only dvi file
+    -o, --pdf_ps          Generate ps automatically and also pdf via $PDFLaTeX
+    -p, --postscript      Run dvips automatically, providing ps output
+    -r, --recursive       Recursively compile the source. Otherwise
                           the program will compile once and exit
-    -s , --silent         Print only errors/warnings output by $LaTeX/$PDFLaTeX
+    -s, --silent          Print only errors/warnings output by $LaTeX/$PDFLaTeX
     -t <paper type>       Run dvips with -t<paper type> option.
                           Default paper type used is ${bold}letter${normal}
-    -T , --no-interaction Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
-    -w , --no-warning     If -s is enabled, then disable output of warnings
+    -T, --no-interaction  Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
+    -w, --no-warning      If -s is enabled, then disable output of warnings
                           If -T is enabled, then disable highlight of warnings
-    -z , --stop           Exit script if $LaTeX gives errors
+    -z, --stop            Exit script if $LaTeX gives errors
+    --acroread            Use acrobat reader as pdf viewer in lieu of the
+                          default set in the config file
+    --no-color            Do not use color in output
     "
     info "If multiple -d,-n,-o,-p,-2 are given then the last one will be used
     "
@@ -307,6 +309,162 @@ help() {
     info "Some extra functionality can be enabled by configuring the config
     file: $blue$config_dir/$config_file$normal
     "
+}
+
+# Usage: parse_cmdline "-some_command"
+parse_cmdline() {
+    local cmd="${1/-}"
+
+    # Check for -xxxE<editor> or -xxxE <editor> in the command
+    # This has to be run at the very beginning
+    # Thankfully, this should not clash with -xxxt<paper> since no
+    # dvips recognized paper size contains E in its name.
+    if [[ "$cmd" =~ [a-zA-DF-Z0-9]*E{1}.* ]]; then
+        btex_editor="${cmd#*E}"
+        if [[ -z "$btex_editor" ]]; then
+            btex_editor="$2"
+            NUM_SHIFTS=1
+        else
+            cmd="${cmd/$btex_editor}"
+        fi
+        cmd="${cmd/E}"
+    fi
+
+    # Check for -xxxt<paper> or -xxxt <paper> in the command
+    # This has to be run at the very beginning after -xxxE
+    if [[ "$cmd" =~ [a-su-zA-Z0-9]*t{1}.* ]]; then
+        PAPER="${cmd#*t}"
+        if [[ -z "$PAPER" ]]; then
+            PAPER="$2"
+            NUM_SHIFTS=1
+        else
+            cmd="${cmd/$PAPER}"
+        fi
+        DVIPS_PAPER_OPTIONS="-t$PAPER"
+        cmd="${cmd/t}"
+    fi
+
+    # Check for -2 embedded in the command
+    if [[ "$cmd" =~ [a-zA-Z013-9]*2{1}.* ]]; then
+        cmd="${cmd/2}"
+        MODE="PS2PDF"
+    fi
+
+    # Check for -a embedded in the command
+    if [[ "$cmd" =~ [b-zA-Z0-9]*a{1}.* ]]; then
+        cmd="${cmd/a}"
+        AUTOCOMPILE=1
+    fi
+
+    # Check for -A embedded in the command
+    if [[ "$cmd" =~ [a-zB-Z0-9]*A{1}.* ]]; then
+        cmd="${cmd/A}"
+        INOTIFYFILES="*.tex"
+    fi
+
+    # Check for -B embedded in the command
+    if [[ "$cmd" =~ [a-zAC-Z0-9]*B{1}.* ]]; then
+        cmd="${cmd/B}"
+        check bibtex && BIBTEX=1
+    fi
+
+    # Check for -c embedded in the command
+    if [[ "$cmd" =~ [abd-zA-Z0-9]*c{1}.* ]]; then
+        cmd="${cmd/c}"
+        INVERSE_SEARCH="-src-specials"
+        RECURSIVE=1
+        # 2 = _no-interaction, 3 = _silent, 5 = _nowarning
+        [[ $(( ${SILENT}%2 )) -eq 0 ]] || SILENT=$(( ${SILENT}*2 ))
+        [[ $(( ${SILENT}%3 )) -eq 0 ]] || SILENT=$(( ${SILENT}*3 ))
+        [[ $(( ${SILENT}%5 )) -eq 0 ]] || SILENT=$(( ${SILENT}*5 ))
+    fi
+
+    # Check for -C embedded in the command
+    if [[ "$cmd" =~ [a-zABD-Z0-9]*C{1}.* ]]; then
+        cmd="${cmd/C}"
+        [[ "$CLEAN_FILES" ]] || CLEAN_FILES="aux log"
+    fi
+
+    # Check for -d embedded in the command
+    if [[ "$cmd" =~ [a-ce-zA-Z0-9]*d{1}.* ]]; then
+        cmd="${cmd/d}"
+        MODE="PDF"
+    fi
+
+    # Check for -e embedded in the command
+    if [[ "$cmd" =~ [a-df-zA-Z0-9]*e{1}.* ]]; then
+        cmd="${cmd/e}"
+        set_beamer_options
+    fi
+
+    # Check for -h embedded in the command
+    if [[ "$cmd" =~ [a-gi-zA-Z0-9]*h{1}.* ]]; then
+        die "Invalid option -h in $red$1$normal"
+    fi
+
+    # Check for -i embedded in the command
+    if [[ "$cmd" =~ [a-hj-zA-Z0-9]*i{1}.* ]]; then
+        cmd="${cmd/i}"
+        INVERSE_SEARCH="-src-specials"
+    fi
+
+    # Check for -I embedded in the command
+    if [[ "$cmd" =~ [a-zA-HJ-Z0-9]*I{1}.* ]]; then
+        cmd="${cmd/I}"
+        INDEX=1
+    fi
+
+    # Check for -n embedded in the command
+    if [[ "$cmd" =~ [a-mo-zA-Z0-9]*n{1}.* ]]; then
+        cmd="${cmd/n}"
+        MODE="NO_POSTSCRIPT"
+    fi
+
+    # Check for -o embedded in the command
+    if [[ "$cmd" =~ [a-np-zA-Z0-9]*o{1}.* ]]; then
+        cmd="${cmd/o}"
+        MODE="PDF_POSTSCRIPT"
+    fi
+
+    # Check for -p embedded in the command
+    if [[ "$cmd" =~ [a-oq-zA-Z0-9]*p{1}.* ]]; then
+        cmd="${cmd/p}"
+        MODE="POSTSCRIPT"
+    fi
+
+    # Check for -r embedded in the command
+    if [[ "$cmd" =~ [a-qs-zA-Z0-9]*r{1}.* ]]; then
+        cmd="${cmd/r}"
+        RECURSIVE=1
+    fi
+
+    # Check for -s embedded in the command
+    if [[ "$cmd" =~ [a-rt-zA-Z0-9]*s{1}.* ]]; then
+        cmd="${cmd/s}"
+        [[ $(( ${SILENT}%3 )) -eq 0 ]] || SILENT=$(( ${SILENT}*3 ))
+    fi
+
+    # Check for -T embedded in the command
+    if [[ "$cmd" =~ [a-zA-SU-Z0-9]*T{1}.* ]]; then
+        cmd="${cmd/T}"
+        [[ $(( ${SILENT}%2 )) -eq 0 ]] || SILENT=$(( ${SILENT}*2 ))
+    fi
+
+    # Check for -w embedded in the command
+    if [[ "$cmd" =~ [a-vx-zA-Z0-9]*w{1}.* ]]; then
+        cmd="${cmd/w}"
+        [[ $(( ${SILENT}%5 )) -eq 0 ]] || SILENT=$(( ${SILENT}*5 ))
+    fi
+
+    # Check for -z embedded in the command
+    if [[ "$cmd" =~ [a-yA-Z0-9]*z{1}.* ]]; then
+        cmd="${cmd/z}"
+        unset NON_STOP
+    fi
+
+    # If there is any other option left, then raise an error
+    [[ "$cmd" ]] &&
+        die "${red}-$cmd${normal}: Invalid option(s) left over from $1\n"
 }
 
 # Usage: set_beamer_options
@@ -338,7 +496,7 @@ setup_config_file() {
 # PS viewer options,- the following are for gv
 # Default is empty.
 # PS_VIEWER_OPTIONS="-watch -spartan"
-# 
+#
 # PDF file viewer,- uncomment or add a viewer
 # Default is empty.
 # PDF_VIEWER=xpdf
@@ -453,17 +611,18 @@ fi
 : ${MODE:=NO_POSTSCRIPT}
 
 # Variables not present in the config file
-AUTOCOMPILE=0           # Set to 1 to enable autocompile mode
+declare -i AUTOCOMPILE=0 # Set to 1 to enable autocompile mode
+declare -i NON_STOP=1   # By default use non-stop mode, i.e. script will
+                        # not exit on latex error
+declare -i NUM_SHIFTS=0 # Number of shifts after parse_cmdline
+declare -i RECURSIVE=0  # If 0, script will compile only once and exit
+declare -i SLEEP_TIME=1 # Amount of delay when using sleep command
 BIBLIOGRAPHY=           # This is set to 1 when bibliography is detected
 DVIPS_PAPER_OPTIONS="-t$PAPER"
 INDEX=                  # This is set to 1 when index is detected
 INOTIFYFILES=           # Set it to "*.tex" to check status of all .tex
 INVERSE_SEARCH=         # Command line option when inv search is enabled
 INVERSE_SEARCH_CAPABLE= # non-empty if latex takes -src-specials argument
-NON_STOP=1              # By default use non-stop mode, i.e. script will
-                        # not exit on latex error
-RECURSIVE=0             # If 0, script will compile only once and exit
-SLEEP_TIME=1            # Amount of delay when using sleep command
 XPDF_OPTIONS=
 # Possible values of SILENT are:
 #   integers 1, 2, 3, 5 and their combinations
@@ -474,10 +633,10 @@ XPDF_OPTIONS=
 #   5: only errs shown, warnings are not shown. This can be enabled only
 #      after either 2 or 3 has been enabled ( _nowarning formerly )
 #   x*y where x \in {2,3,5} and y \in {2,3,5}\{x}: combinations of above
-SILENT=1
+declare -i SILENT=1
 
 #echo $-
-if [[ "$DISPLAY" && -z "$@" ]] && ! tty -s; then 
+if [[ "$DISPLAY" && -z "$@" ]] && ! tty -s; then
     exec xterm -hold -e "$(dirname "$0")/$(basename "$0")" -h
 fi
 
@@ -486,7 +645,6 @@ until [[ -z "$1" ]]; do
     -2 | --ps2pdf)      MODE="PS2PDF" ;;
     -a | --autocompile) AUTOCOMPILE=1 ;;
     -A | --all-tex)     INOTIFYFILES="*.tex" ;;
-    -ar| --acroread)    check acroread && PDF_VIEWER="$CHECKED" ;;
     -B | --bibtex)      check bibtex && BIBTEX=1 ;;
     -c | --choose4me)   # Choose a default set of options automatically
         # -i -r -s -T -w
@@ -504,7 +662,6 @@ until [[ -z "$1" ]]; do
     -i | --inv-search)  INVERSE_SEARCH="-src-specials" ;;
     -I | --index)       INDEX=1 ;;
     -n | --no-postscript) MODE="NO_POSTSCRIPT";;
-    -nc| --no-color)    unset ${COLORS[@]} ;;
     -o | --pdf_ps)      MODE="PDF_POSTSCRIPT";;
     -p | --postscript)  MODE="POSTSCRIPT";;
     -r | --recursive)   RECURSIVE=1 ;;
@@ -523,12 +680,16 @@ until [[ -z "$1" ]]; do
 		shift
 		set -- for_shift_below "${_var_%=*}" "${_var_#*=}" "$@"
 		unset _var_ ;;
-    -*) help
-        die "${red}$1${normal}: Invalid Option!\n" ;;
+    --acroread)         check acroread && PDF_VIEWER="$CHECKED" ;;
+    --no-color)         unset ${COLORS[@]} ;;
+    --*) die "${red}$1${normal}: Invalid Option!\n" ;;
+    -*) parse_cmdline "$1" "$2"
+        [[ $NUM_SHIFTS -eq 1 ]] && shift && NUM_SHIFTS=0 ;;
     *)  filename="$1" ;;
     esac
     shift
 done
+unset NUM_SHIFTS
 # Other functions used in the script. {{{
 # The functions are all presented in alphabetical order.
 
@@ -703,26 +864,29 @@ compile_pdf() {
 compile_ps() {
     run_latex "1st" || return
     if [[ "$BIBTEX" || "$INDEX" ]]; then
-        [[ "$BIBTEX" ]]   && run_bibtex 
+        [[ "$BIBTEX" ]]   && run_bibtex
         [[ "$INDEX" ]]    && run_index
-        run_latex "2nd" && run_latex "3rd"
+        run_latex "2nd"   && run_latex "3rd"
     elif [[ "$BIBLIOGRAPHY" || "$INDEX" ]]; then
         # If it has come till here, then latex ran ok earlier
         # So, we don't need to return on error
         [[ "$INDEX" ]]    && run_index
-        run_latex "2nd" && run_latex "3rd"
+        run_latex "2nd"   && run_latex "3rd"
     fi
 
     case "${1}" in
-        ask)echo; infon "CONTINUE with dvips?[enter/y or n]:"
-            read -n 1 answer;echo;;
-        only_dvi) answer="n";;
-        *)  answer="y";;
+        ask)        echo; infon "CONTINUE with dvips?[enter/y or n]:"
+                    read -n 1 answer; echo ;;
+        only_dvi)   answer="n" ;;
+        *)          answer="y" ;;
     esac
     case "$answer" in
         "" | [yY]*) infon "Creating $file.ps ... ";#echo
-            dvips ${DVIPS_PAPER_OPTIONS} -q -o "$file.ps" "$file.dvi"
-            success $? ;;
+            local e="$( dvips ${DVIPS_PAPER_OPTIONS} -q -o "$file.ps" \
+                              "$file.dvi" 2>&1 )"
+            success $?
+            [[ $(( ${SILENT}%3 )) -ne 0 && "$e" ]] &&
+                Err "Errors and Warnings from ${green}dvips$normal:\n$e" ;;
         *) ;; # Do nothing
     esac
 }
@@ -812,7 +976,7 @@ run_latex() {
             status=$? ;;
     esac
 
-    if [[ "$status" -ne 0 && -z "$NON_STOP" ]]; then 
+    if [[ "$status" -ne 0 && -z "$NON_STOP" ]]; then
         die "${filename}: Error in $LaTeX compilation"
     else
         return "$status"
@@ -882,7 +1046,7 @@ set_xdvi() {
     #       else:   file is not open, can't do anything.
     #   else: file is not open, can't do anything.
     [[ "$DVI_VIEWER" && "${DVI_VIEWER/xdvi/}" = "$DVI_VIEWER" ]] && return
-    
+
     # If btex_editor is non-empty then start using it
     if [[ "$btex_editor" = "custom" ]]; then
         # Nothing to do here
@@ -904,8 +1068,8 @@ set_xdvi() {
     TMP_FILE="$(mktemp /tmp/btex.XXXX)" || TMP_FILE=/tmp/"$UID".btex
     case "$_editor" in
         custom)     # This is the custom editor. The output of the script
-                    # that is run should contain the editor command to be 
-                    # passed to xdvi. The script to be run should be 
+                    # that is run should contain the editor command to be
+                    # passed to xdvi. The script to be run should be
                     # $config_dir/btex_custom_editor
             if [[ -x "$config_dir/btex_custom_editor" ]]; then
                 edit_cmd="$( $config_dir/btex_custom_editor )"
@@ -1020,7 +1184,7 @@ show_menu() {
         echo -e "\t\t\tBibtex compilation is enabled"
         bibtx="Disable"
     }
-        
+
     [[ "$DVIPS_PAPER_OPTIONS" ]] || {
         echo -e "\t\t\tBeamer mode is enabled"
         bmr="Disable Beamer mode           "
@@ -1176,7 +1340,7 @@ while true; do
             fi;;
     [dD])   if [[ "$MODE" = "PDF" ]]; then
                 MODE="ASK_POSTSCRIPT"; compile "$MODE"
-            else    
+            else
                 MODE="PDF"; compile "$MODE"
             fi ;;
     [eE])   set_beamer_options;;
@@ -1212,7 +1376,7 @@ while true; do
                 die "$answer: Invalid option!
     This option will be enabled when you set a ps viewer in the config file
     $blue$config_dir/$config_file$normal"
-            if [[ -f "$file.ps" ]]; then 
+            if [[ -f "$file.ps" ]]; then
                 [[ "$file.ps" -ot "$filename" ]] && {
                     echo
                     Err -w \
