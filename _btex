@@ -1,0 +1,44 @@
+#compdef btex
+
+# by myself
+local local_options
+
+if (( $words[(I)(-h|--help)] )); then
+    _arguments -s \
+        '(--help)-h[Show help text]:help options:( autocompile editor inv-search )' \
+        '(-h)--help[Show help text]:help options:( autocompile editor inv-search )' \
+        && return 0
+fi
+
+local_options=(
+    '(-d -n -o -p --ps2pdf --pdf --no-postscript --pdf_ps --postscript)-2[Generate pdf from postscript output]'
+    '(-d -n -o -p --pdf --no-postscript --pdf_ps --postscript)--ps2pdf[Generate pdf from postscript output]'
+    '(-2 -n -o -p --ps2pdf --pdf --no-postscript --pdf_ps --postscript)-d[Output a pdf file,- this uses pdflatex]'
+    '(-2 -n -o -p --ps2pdf --no-postscript --pdf_ps --postscript)--pdf[Output a pdf file,- this uses pdflatex]'
+    '(-2 -d -o -p --ps2pdf --pdf --no-postscript --pdf_ps --postscript)-n[Output only dvi file]'
+    '(-2 -d -o -p --ps2pdf --pdf --pdf_ps --postscript)--no-postscript[Output only dvi file]'
+    '(-2 -d -n -p --ps2pdf --pdf --no-postscript --pdf_ps --postscript)-o[Generate ps automatically and also pdf via pdflatex]'
+    '(-2 -d -n -p --ps2pdf --pdf --no-postscript --postscript)--pdf_ps[Generate ps automatically and also pdf via pdflatex]'
+    '(-2 -d -n -o --ps2pdf --pdf --no-postscript --pdf_ps --postscript)-p[Run dvips automatically, providing ps output]'
+    '(-2 -d -n -o --ps2pdf --pdf --no-postscript --pdf_ps)--postscript[Run dvips automatically, providing ps output]'
+    {'(-a)--autocompile','(--autocompile)-a'}'[Enable autocompile mode]'
+    '--acroread[Use acrobat reader as pdf viewer]'
+    {'(--all-tex)-A','(-A)--all-tex'}'[Check all tex files during autocompile]'
+    {'(-B)--bibtex','(--bibtex)-B'}'[Enable bibtex compilation]'
+    {'(-c)--choose4me','(--choose4me)-c'}'[Choose some default settings: -i -r -s -T -w]'
+    {'(-C)--clean','(--clean)-C'}'[Clean temporary files created by (pdf)latex]'
+    {'(-e)--beamer','(--beamer)-e'}'[Toggle beamer mode]'
+    {'(-E)--editor','(--editor)-E'}'[Specify editor to use with xdvi]:editor:_path_commands'
+    {'(--help)-h','(-h)--help'}'[Show help text]'
+    {'(-i)--inv-search','(--inv-search)-i'}'[Enable inverse search in dvi]'
+    '--no-color[Do not use color in output]'
+    {'(-r)--recursive','(--recursive)-r'}'[Recursively compile the source]'
+    {'(-s)--silent','(--silent)-s'}'[Print only errors/warnings output by (pdf)latex]'
+    {'(-T)--no-interaction','(--no-interaction)-T'}'[Run (pdf)latex with -interaction=nonstopmode]'
+    {'(-w)--nowarning','(--nowarning)-w'}'[Disable output/highlight of warnings]'
+    {'(-z)--stop','(--stop)-z'}'[Exit script if latex gives errors]'
+    '-t[Paper type used with dvips (default: letter)]:paper type:( a3 a4 landscape ledger legal letter )'
+    ':latex files:_files -/g "*.tex"'
+)
+
+_arguments -s $local_options && return 0
