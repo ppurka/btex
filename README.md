@@ -46,8 +46,8 @@ zsh completion:
 ---------------
 
 A [zsh](http://www.zsh.org) completion file `_btex` is included. An
-elementary zsh completion can be achieved by simply adding the following
-line to your `zshrc`:
+elementary zsh completion, without using the file `_btex`, can be achieved
+by simply adding the following line to your `zshrc`:
 
     $ echo 'compdef _gnu_generic btex' >> ~/.zshrc
     $ exec zsh
@@ -59,3 +59,6 @@ some completion directory and adding that directory to your zsh's `fpath`:
     $ cp _btex ~/.config/zsh-completion
     $ echo 'fpath=( ~/.config/zsh-completion $fpath )' >> ~/.zshrc
     $ exec zsh
+
+If you enable this advanced completion, then do not use the `compdef` line
+in your `~/.zshrc`.
