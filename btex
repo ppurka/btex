@@ -19,6 +19,7 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 03/14/2015    Fix detection of error with pdfximage.      #
         # 03/07/2015    Convert PAPER values to lowercase always.   #
         #               Do not give dvips error message in PDF mode.#
         #               New count-up for the eps->pdf conversion.   #
@@ -982,32 +983,32 @@ run_latex() {
     infor "$cyan$1$normal run of $LaTeX"
     case "$SILENT" in
         30) $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
-            "$filename" >&1 | sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+            "$filename" >&1 | sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         10) $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
-            "$filename" >&1 | sed -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+            "$filename" >&1 | sed -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
         15) $LaTeX $LaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
-            sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+            sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         6) $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
             "$filename" >&1 | sed -ne \
                 "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         2) $LaTeX $LaTeX_Opts $INVERSE_SEARCH -interaction=nonstopmode \
             "$filename" >&1 | sed -e \
                 "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
-                -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+                -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
         3) $LaTeX $LaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         *)  $LaTeX $LaTeX_Opts $INVERSE_SEARCH "$filename"
@@ -1030,33 +1031,33 @@ run_pdflatex() {
     case "$SILENT" in
         30) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
-            >&1 | sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+            >&1 | sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         10) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
-            >&1 | sed -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+            >&1 | sed -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
         15) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
-            sed -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+            sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         6) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         2) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
-                -e "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/" \
+                -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
         3) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
-                -ne "/^[!?] /,/^$/s/\(.*\)/$red\1$normal/p" \
+                -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
         *)  $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename"
