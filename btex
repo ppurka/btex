@@ -21,6 +21,7 @@
         ### MM/DD/YYYY            Changelog                       ###
         # 03/22/2015    Do not show eps message if there are no eps.#
         #               Fix counter in autocompile mode.            #
+        #               Exit if terminal is lost.                   #
         # 03/14/2015    Fix detection of error with pdfximage.      #
         # 03/07/2015    Convert PAPER values to lowercase always.   #
         #               Do not give dvips error message in PDF mode.#
@@ -947,7 +948,10 @@ index_is_present() {
 # Ctrl-C is pressed.
 # Usage: on_trap
 on_trap() {
-    if [[ "$AUTOCOMPILE" -eq 1 ]]; then
+    # if the terminal window is closed suddenly, then simply exit
+    if ! tty -s; then
+        exit
+    elif [[ "$AUTOCOMPILE" -eq 1 ]]; then
         # ctrl-C was pressed while in autocompile mode. Don't exit the
         # script. Simply continue with the rest of the script
         break
