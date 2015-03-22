@@ -19,6 +19,8 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 03/22/2015    Do not show eps message if there are no eps.#
+        #               Fix counter in autocompile mode.            #
         # 03/14/2015    Fix detection of error with pdfximage.      #
         # 03/07/2015    Convert PAPER values to lowercase always.   #
         #               Do not give dvips error message in PDF mode.#
@@ -727,8 +729,10 @@ unset NUM_SHIFTS
 # Usage: autocompile <mode>
 # <mode> is one of the possible modes as set in $MODE
 autocompile() {
-    local clr="$(tput el)" i="1" MODE="${1}"
+    local clr="$(tput el)"
+    local MODE="${1}"
     local e="close_write,modify,move_self"
+    local -i i=1
     [[ "$INOTIFYFILES" ]] || INOTIFYFILES="$filename"
     if [[ "$INOTIFYWAIT" ]]; then
         while true; do
@@ -738,7 +742,7 @@ autocompile() {
                 # Sleep for a brief period while the file gets written to
                 # disk. Otherwise file is sometimes not found on the disk
                 sleep "$INOTIFY_DELAY" || die \
-                 "Set INOTIFY_DELAY to some positive real number, you \$#@!%"
+                 "Set INOTIFY_DELAY to some positive real number, you \$\#@!%"
                 compile "$MODE"
                 ((i++))
             fi
@@ -871,18 +875,20 @@ compile() {
 compile_pdf() {
     local -i num_newer_eps=0
     local -i counter=0
-    info "Converting the (newer) eps images to pdf ..."
-    while read i; do
-        if [[ "${i%\.*}.pdf" -ot "$i" ]]; then
+    local f
+    while read f; do
+        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
             ((num_newer_eps++))
         fi
     done < <(find *.eps 2>/dev/null)
-    while read i; do
-        if [[ "${i%\.*}.pdf" -ot "$i" ]]; then
+    [[ $num_newer_eps -gt 0 ]] &&
+        info "Converting $num_newer_eps (newer) eps images to pdf ..."
+    while read f; do
+        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
             ((counter++))
-            infon "Converting [$counter/$num_newer_eps] ${bold}$i${normal} to ${bold}${i%\.*}.pdf${normal} ... "
+            infon "Converting [$counter/$num_newer_eps] ${bold}$f${normal} to ${bold}${f%\.*}.pdf${normal} ... "
             # -dEPSCrop crops to figure. /prepress embeds fonts
-            ps2pdf -dPDFSETTINGS=/prepress -dEPSCrop "$i"
+            ps2pdf -dPDFSETTINGS=/prepress -dEPSCrop "$f"
             success $?
         fi
     done < <(find *.eps 2>/dev/null)
