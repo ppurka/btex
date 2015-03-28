@@ -19,6 +19,8 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 03/28/2015    Fix usage of trap in >=bash-4.3. Behavior of#
+        #               the shell builtin "read" has changed.       #
         # 03/22/2015    Do not show eps message if there are no eps.#
         #               Fix counter in autocompile mode.            #
         #               Exit if terminal is lost.                   #
@@ -735,6 +737,8 @@ autocompile() {
     local e="close_write,modify,move_self"
     local -i i=1
     [[ "$INOTIFYFILES" ]] || INOTIFYFILES="$filename"
+    # Set the trap command
+    trap "on_trap" 1 2 5 15
     if [[ "$INOTIFYWAIT" ]]; then
         while true; do
             infor "${blue}Waiting$normal for change in the status of file ..."
@@ -770,6 +774,10 @@ autocompile() {
         # following command will remove the tmp file
         rm "$TMP_FILE"
     fi
+    # Reset trap
+    for i in 1 2 5 15; do
+        trap $i
+    done
 }
 
 # Usage: bibliography_is_present <filename|*.tex> [<filename2>]
@@ -948,16 +956,10 @@ index_is_present() {
 # Ctrl-C is pressed.
 # Usage: on_trap
 on_trap() {
-    # if the terminal window is closed suddenly, then simply exit
-    if ! tty -s; then
-        exit
-    elif [[ "$AUTOCOMPILE" -eq 1 ]]; then
+    if [[ "$AUTOCOMPILE" -eq 1 ]]; then
         # ctrl-C was pressed while in autocompile mode. Don't exit the
         # script. Simply continue with the rest of the script
         break
-    else
-        echo  # Just for kicks
-        exit
     fi
 }
 
@@ -1310,8 +1312,6 @@ if [[ ! -f "${filename}" || "${filename/ /}" != "${filename}" ]]; then
 fi
 file="${filename%\.tex}"
 
-
-trap "on_trap" 1 2 5 15
 
 # Autodetect beamer mode
 if [[ "$DVIPS_PAPER_OPTIONS" ]] && \
