@@ -956,7 +956,10 @@ index_is_present() {
 # Ctrl-C is pressed.
 # Usage: on_trap
 on_trap() {
-    if [[ "$AUTOCOMPILE" -eq 1 ]]; then
+    # if the terminal window is closed suddenly, then simply exit
+    if ! tty -s; then
+        exit
+    elif [[ "$AUTOCOMPILE" -eq 1 ]]; then
         # ctrl-C was pressed while in autocompile mode. Don't exit the
         # script. Simply continue with the rest of the script
         break
