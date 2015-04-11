@@ -19,6 +19,9 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 04/11/2015    Enable a -W switch to watch only specific   #
+        #               files during autocompile. The files can be  #
+        #               in any directory.                           #
         # 03/28/2015    Fix usage of trap in >=bash-4.3. Behavior of#
         #               the shell builtin "read" has changed.       #
         # 03/22/2015    Do not show eps message if there are no eps.#
@@ -300,7 +303,9 @@ help() {
                           change in the file.
                           Run $green$self -h autocompile$normal for more info
     -A, --all-tex         Run autocompile mode on all .tex files instead of
-                          just on the file provided in command line
+                          just on the file provided in command line.
+                          This watches all the tex files in the directory
+                          where the main tex file is present.
     -B, --bibtex          Enable bibtex compilation
     -c, --choose4me       Choose some default settings: -i -r -s -T -w
     -C, --clean           Remove the temporary latex files upon exiting the
@@ -329,6 +334,13 @@ help() {
     -T, --no-interaction  Run $LaTeX/$PDFLaTeX with -interaction=nonstopmode
     -w, --no-warning      If -s is enabled, then disable output of warnings
                           If -T is enabled, then disable highlight of warnings
+    -W, --watch-files     Provide one or more file names, possibly in other
+                          directories, that will be watched in autocompile
+                          mode. See the examples below.
+                          ${underline}Note:$normal If no latex filename is provided
+                          separately, and the last filename provided in -W
+                          is not in a separate directory, then that will be
+                          considered as the main latex file to compile.
     -z, --stop            Exit script if $LaTeX gives errors
     --acroread            Use acrobat reader as pdf viewer in lieu of the
                           default set in the config file
@@ -340,6 +352,29 @@ help() {
     ${underline}An example, when using beamer${normal}:
     btex -e -d -r -s    # recursive, silent, using $PDFLaTeX & beamer
     "
+    info "Usage of -W or --watch-files:
+
+    1. The first one is a typical usage where main.tex is the main file
+       btex -ca main.tex -W chapters*.tex -d
+
+    2. In this case, no main file is provided, so provide the ${bold}full
+       path$normal to the -W command switch
+       btex -aW \"/path/to/my directory with spaces\"/chapters*.tex
+
+    3. In this case multiple files are provided and the last file is the
+       main file that is in the current directory. If main.tex is in some
+       other directory, then
+       - provide the ${bold}full path$normal to the watched files, and
+       - there should be some other command line switch before the main file
+         to distinguish when the -W command has ended.
+       btex -aW \"./relative dir\"/chapters*.tex main.tex
+       btex -W \"\$PWD\"/*/chapters*.tex -a a/m.tex
+
+    4. This functionality does not interfere with -A, since -A only watches
+       files in the directory where the latex main file is present. So,
+       both the options can be used simultaneously.
+       btex -W \"\$PWD\"/*/chapters*.tex -aA a/m.tex
+    "
     info "Some extra functionality can be enabled by configuring the config
     file: $blue$config_dir/$config_file$normal
     "
@@ -348,6 +383,13 @@ help() {
 # Usage: parse_cmdline "-some_command"
 parse_cmdline() {
     local cmd="${1/-}"
+
+    # Check for -xxxW embedded in the command. This must be the last
+    # command.
+    if [[ "$cmd" =~ [a-zA-VX-Z0-9]*W ]]; then
+        WATCH_FILE=1
+        cmd="${cmd/W}"
+    fi
 
     # Check for -xxxE<editor> or -xxxE <editor> in the command
     # This has to be run at the very beginning
@@ -652,6 +694,8 @@ declare -i NON_STOP=1   # By default use non-stop mode, i.e. script will
 declare -i NUM_SHIFTS=0 # Number of shifts after parse_cmdline
 declare -i RECURSIVE=0  # If 0, script will compile only once and exit
 declare -i SLEEP_TIME=1 # Amount of delay when using sleep command
+declare -i WATCH_FILE=0 # Whether to watch multiple files for autocompile
+declare -a WATCHED_FILES # Which files are being watched
 BIBLIOGRAPHY=           # This is set to 1 when bibliography is detected
 DVIPS_PAPER_OPTIONS="-t$( convert_to_lowercase $PAPER )"
 INDEX=                  # This is set to 1 when index is detected
@@ -676,6 +720,8 @@ if [[ "$DISPLAY" && -z "$@" ]] && ! tty -s; then
 fi
 
 until [[ -z "$1" ]]; do
+    # Stop appending file names to WATCH_FILE if there is a new switch
+    [[ $WATCH_FILE -eq 1 && "$1" = -* ]] && WATCH_FILE=0
     case "$1" in
     -2 | --ps2pdf)      MODE="PS2PDF" ;;
     -a | --autocompile) AUTOCOMPILE=1 ;;
@@ -710,6 +756,7 @@ until [[ -z "$1" ]]; do
         SILENT=$(( ${SILENT}*2 )) ;;
     -w | --no-warning)  [[ $(( ${SILENT}%5 )) -eq 0 ]] || \
         SILENT=$(( ${SILENT}*5 )) ;;
+    -W | --watch-files) WATCH_FILE=1 ;;
     -z | --stop)        unset NON_STOP ;;
     -*=*) _var_="$1"
 		shift
@@ -720,7 +767,9 @@ until [[ -z "$1" ]]; do
     --*) die "${red}$1${normal}: Invalid Option!\n" ;;
     -*) parse_cmdline "$1" "$2"
         [[ $NUM_SHIFTS -eq 1 ]] && shift && NUM_SHIFTS=0 ;;
-    *)  filename="$1" ;;
+    *)  [[ $WATCH_FILE -eq 1 ]]     &&
+            WATCHED_FILES+=( "$1" ) ||
+            filename="$1" ;;
     esac
     shift
 done
@@ -742,7 +791,7 @@ autocompile() {
     if [[ "$INOTIFYWAIT" ]]; then
         while true; do
             infor "${blue}Waiting$normal for change in the status of file ..."
-            if $INOTIFYWAIT -e "$e" -qq $INOTIFYFILES; then
+            if $INOTIFYWAIT -e "$e" -qq $INOTIFYFILES "${WATCHED_FILES[@]}"; then
                 info "Autocompile # $i$clr"
                 # Sleep for a brief period while the file gets written to
                 # disk. Otherwise file is sometimes not found on the disk
@@ -760,9 +809,10 @@ autocompile() {
         while true; do
             infor "${blue}Waiting$normal for change in the status of file ..."
             if [[ "$( find $INOTIFYFILES -maxdepth 0 -newer "$TMP_FILE" \
-                2>/dev/null )" ]]; then
-                touch -d "$( ls -lt --full-time $INOTIFYFILES | \
-                    awk 'NR==1 { print $6" "$7 }' )" "$TMP_FILE"
+                        2>/dev/null )" ]]; then
+                touch -d "$( ls -lt --full-time $INOTIFYFILES           \
+                                                "${WATCHED_FILES[@]}" | \
+                                 awk 'NR==1 { print $6" "$7 }' )" "$TMP_FILE"
                 info "Autocompile # $i$clr"
                 compile "$MODE"
                 ((i++))
@@ -1301,9 +1351,15 @@ check "$LaTeX"
 
 # All about files
 if [[ -z "${filename}" ]]; then
-    read_filename 1 tex
-    filename="$FILEPATH"
-    unset FILEPATH
+    # If WATCHED_FILES contains a final entry that does not contain
+    # a directory structure, then use that file as the main latex file.
+    if [[ "${WATCHED_FILES[@]}" && "${WATCHED_FILES[${#WATCHED_FILES[@]} - 1]}" != */* ]]; then
+        filename="${WATCHED_FILES[${#WATCHED_FILES[@]} - 1]}"
+    else
+        read_filename 1 tex
+        filename="$FILEPATH"
+        unset FILEPATH
+    fi
 fi
 # Change to the directory containing the tex file, else a lot will go awry
 [[ "$filename" = */* ]] && cd "${filename%\/*}"
