@@ -5,7 +5,7 @@
         #-----------------------------------------------------------#
 
         #----------------- License: GPL-3 or later -----------------#
-        # Copyright (C) 2007 - 2015  P. Purkayastha                 #
+        # Copyright (C) 2007 - 2019  P. Purkayastha                 #
         # Contact: ppurka _at_ gmail _dot_ com                      #
         # This program comes with ABSOLUTELY NO WARRANTY;           #
         # This is free software, and you are welcome to redistribute#
@@ -19,7 +19,7 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
-        # 02/02/2018    Re-enable Ctrl-C behavior with autocompile  #
+        # 02/02/2019    Re-enable Ctrl-C behavior with autocompile  #
         #               that was broken since bash-4.3!             #
         # 04/11/2015    Enable a -W switch to watch only specific   #
         #               files during autocompile. The files can be  #
