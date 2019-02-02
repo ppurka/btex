@@ -19,6 +19,8 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 02/02/2018    Re-enable Ctrl-C behavior with autocompile  #
+        #               that was broken since bash-4.3!             #
         # 04/11/2015    Enable a -W switch to watch only specific   #
         #               files during autocompile. The files can be  #
         #               in any directory.                           #
@@ -689,6 +691,7 @@ fi
 
 # Variables not present in the config file
 declare -i AUTOCOMPILE=0 # Set to 1 to enable autocompile mode
+declare -i CAUGHT_TRAP=0 # Set to 1 when SIGINT is received
 declare -i NON_STOP=1   # By default use non-stop mode, i.e. script will
                         # not exit on latex error
 declare -i NUM_SHIFTS=0 # Number of shifts after parse_cmdline
@@ -790,6 +793,10 @@ autocompile() {
     trap "on_trap" 1 2 5 15
     if [[ "$INOTIFYWAIT" ]]; then
         while true; do
+            if [[ $CAUGHT_TRAP -eq 1 ]]; then
+                CAUGHT_TRAP=0
+                break
+            fi
             infor "${blue}Waiting$normal for change in the status of file ..."
             if $INOTIFYWAIT -e "$e" -qq $INOTIFYFILES "${WATCHED_FILES[@]}"; then
                 info "Autocompile # $i$clr"
@@ -807,6 +814,10 @@ autocompile() {
         # There can be only one loop since we want it to not exit the
         # script on pressing Ctrl-C
         while true; do
+            if [[ $CAUGHT_TRAP -eq 1 ]]; then
+                CAUGHT_TRAP=0
+                break
+            fi
             infor "${blue}Waiting$normal for change in the status of file ..."
             if [[ "$( find $INOTIFYFILES -maxdepth 0 -newer "$TMP_FILE" \
                         2>/dev/null )" ]]; then
@@ -825,9 +836,7 @@ autocompile() {
         rm "$TMP_FILE"
     fi
     # Reset trap
-    for i in 1 2 5 15; do
-        trap $i
-    done
+    trap - 1 2 5 15
 }
 
 # Usage: bibliography_is_present <filename|*.tex> [<filename2>]
@@ -1012,7 +1021,7 @@ on_trap() {
     elif [[ "$AUTOCOMPILE" -eq 1 ]]; then
         # ctrl-C was pressed while in autocompile mode. Don't exit the
         # script. Simply continue with the rest of the script
-        break
+        CAUGHT_TRAP=1
     fi
 }
 
