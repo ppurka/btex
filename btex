@@ -19,6 +19,8 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 02/02/2919    After invalid keypress in interactive mode, #
+        #               return to menu instead of exiting.          #
         # 02/02/2019    Re-enable Ctrl-C behavior with autocompile  #
         #               that was broken since bash-4.3!             #
         # 04/11/2015    Enable a -W switch to watch only specific   #
@@ -1565,7 +1567,8 @@ while true; do
             else    Err "$file.dvi does not exist!"
             fi ;;
     "" | [yY])  compile "$MODE" ;;
-    *)      die "$answer: Invalid Option!" ;;
+    *)      Err "$answer: Invalid option!" 
+            sleep 3;;
     esac
 
 done
