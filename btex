@@ -19,6 +19,9 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 15/09/2021    Add support for xelatex, when MODE is set to#
+        #               "XELATEX", triggered by the new command line#
+        #               switches -x and --xelatex.                  #
         # 02/02/2919    After invalid keypress in interactive mode, #
         #               return to menu instead of exiting.          #
         # 02/02/2019    Re-enable Ctrl-C behavior with autocompile  #
