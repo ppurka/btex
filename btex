@@ -697,6 +697,7 @@ fi
 [[ "$PS_VIEWER"  ]] && check "$PS_VIEWER"  die PS_VIEWER
 : ${LaTeX:=latex}
 : ${PDFLaTeX:=pdflatex}
+: ${XeLaTeX:=xelatex}
 : ${PAPER:=letter}
 : ${INOTIFY_DELAY:=0.5}
 : ${POLLED_AUTOCOMPILE:=0}
