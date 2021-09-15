@@ -614,12 +614,14 @@ setup_config_file() {
 # PDFLaTeX=pdflatex
 # XeLaTeX=xelatex
 #
-# Extra options used by LaTeX and PDFLaTeX. Default is empty.
+# Extra options used by LaTeX, PDFLaTeX and XeLaTeX. Default is empty.
 # LaTeX_Opts=""
 # PDFLaTeX_Opts=""
+# XeLaTeX_Opts=""
 # Suggested Options:
 # LaTeX_Opts="-file-line-error"
 # PDFLaTeX_Opts="-file-line-error"
+# XeLaTeX_Opts="-file-line-error"
 #
 # Paper type used in creating ps from dvi. This is used by dvips
 # Valid options are a3, a4, landscape, ledger, legal, letter.
@@ -1302,6 +1304,7 @@ show_menu() {
         PS2PDF)         echo -e "\tPDF file is generated from PS, using ps2pdf";;
         PDF)            echo -e "\tPDF file is generated using $PDFLaTeX";;
         PDF_POSTSCRIPT) echo -e "\tPS file + PDF file generated via $PDFLaTeX";;
+        XELATEX)        echo -e "\tPDF file is generated using $XeLaTeX";;
         *)              die "$MODE: Invalid mode.";;
     esac
     case "$SILENT" in
@@ -1380,7 +1383,7 @@ success() {
 [[ "$pdf_viewer" != "$PDF_VIEWER" ]] && PDF_VIEWER_OPTIONS=
 
 # Some error checking is done here. But no checks on MODE are done later on
-# in the menu. So, it is possible that the script fails of a mode is chosen
+# in the menu. So, it is possible that the script fails if a mode is chosen
 # from the menu but the commands required for that mode are not present
 check "$LaTeX"
 [[ "$MODE" = *POSTSCRIPT ]]  && check dvips                         &&
@@ -1388,6 +1391,7 @@ check "$LaTeX"
 [[ "$MODE" = "PS2PDF"    ]]  && check dvips       && check ps2pdf   &&
                                 check_dvips_paper_options "$PAPER"
 [[ "$MODE" = "PDF"       ]]  && check "$PDFLaTeX" && check ps2pdf
+[[ "$MODE" = "XELATEX"   ]]  && check "$XeLaTeX" && check ps2pdf
 # Ensure that warnings are enabled only when either non-interaction or
 # silent has been enabled.
 [[ "$SILENT" -eq 5 ]] && {
