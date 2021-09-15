@@ -1134,53 +1134,62 @@ run_latex() {
     fi
 }
 
-# Run the pdflatex command. This accepts an additional parameter which is
-# the run that is being performed. This parameter will be displayed in o/p.
-# Usage: run_pdflatex "<1st|2nd|3rd>"
-run_pdflatex() {
+# Runs pdflatex or another executable which is a drop-in replacement for
+# pdflatex (for example xelatex) as far as the command line options.
+# Takes two arguments: $1 = executable to run,
+#                      $2 = command line options for this executable.
+run_pdf_family_compiler() {
     local status
-    infor "$cyan$1$normal run of $LaTeX"
     case "$SILENT" in
-        30) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        30) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        10) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        10) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
-        15) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
+        15) $1 $2 $INVERSE_SEARCH "$filename" >&1 | \
             sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        6) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        6) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        2) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        2) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
                 -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
-        3) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
+        3) $1 $2 $INVERSE_SEARCH "$filename" >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        *)  $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename"
+        *)  $1 $2 $INVERSE_SEARCH "$filename"
             status=$? ;;
     esac
 
     if [[ "$status" -ne 0 && -z "$NON_STOP" ]]; then
-        die "${filename}: $PDFLaTeX compilation failed"
+        die "${filename}: $1 compilation failed"
     else
         return "$status"
     fi
+}
+
+# Run the pdflatex command. This accepts an additional parameter which is
+# the run that is being performed. This parameter will be displayed in o/p.
+# Usage: run_pdflatex "<1st|2nd|3rd>"
+run_pdflatex() {
+    infor "$cyan$1$normal run of $PDFLaTeX"
+    run_pdf_family_compiler "$PDFLaTeX" "$PDFLaTeX_Opts"
+    return $?
 }
 
 # Function to run xelatex in the future
