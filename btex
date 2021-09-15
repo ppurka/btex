@@ -345,6 +345,7 @@ help() {
                           separately, and the last filename provided in -W
                           is not in a separate directory, then that will be
                           considered as the main latex file to compile.
+    -x, --xelatex         Output a PDF file using $XeLaTeX.
     -z, --stop            Exit script if $LaTeX gives errors
     --acroread            Use acrobat reader as pdf viewer in lieu of the
                           default set in the config file
@@ -536,6 +537,12 @@ parse_cmdline() {
         [[ $(( ${SILENT}%5 )) -eq 0 ]] || SILENT=$(( ${SILENT}*5 ))
     fi
 
+    # Check for -x embedded in the command
+    if [[ "$cmd" =~ [a-np-zA-Z0-9]*x{1}.* ]]; then
+        cmd="${cmd/x}"
+        MODE="XELATEX"
+    fi
+
     # Check for -z embedded in the command
     if [[ "$cmd" =~ [a-yA-Z0-9]*z{1}.* ]]; then
         cmd="${cmd/z}"
@@ -602,9 +609,10 @@ setup_config_file() {
 # DVI_VIEWER_OPTIONS="-watchfile 1"
 #
 # Default programs, first one is for ps, second is for pdf
-# Default is LaTeX=latex and PDFLaTeX=pdflatex.
+# Default is LaTeX=latex, PDFLaTeX=pdflatex and XeLaTeX=xelatex.
 # LaTeX=latex
 # PDFLaTeX=pdflatex
+# XeLaTeX=xelatex
 #
 # Extra options used by LaTeX and PDFLaTeX. Default is empty.
 # LaTeX_Opts=""
@@ -663,6 +671,7 @@ setup_config_file() {
 #   NO_POSTSCRIPT:  Only DVI is generated
 #   PDF:            PDF is generated using pdflatex
 #   PDF_POSTSCRIPT: PDF is generated using pdflatex && PS is generated
+#   XELATEX:        PDF is generated using xelatex
 #   Default is NO_POSTSCRIPT
 # MODE="NO_POSTSCRIPT"
 END
@@ -762,6 +771,7 @@ until [[ -z "$1" ]]; do
     -w | --no-warning)  [[ $(( ${SILENT}%5 )) -eq 0 ]] || \
         SILENT=$(( ${SILENT}*5 )) ;;
     -W | --watch-files) WATCH_FILE=1 ;;
+    -x | --xelatex)     MODE="XELATEX" ;;
     -z | --stop)        unset NON_STOP ;;
     -*=*) _var_="$1"
 		shift
