@@ -1453,14 +1453,14 @@ fi
 if bibtex_is_present "$filename" || \
     (  [[ "$INOTIFYFILES" = "*.tex" ]] && bibtex_is_present "*.tex" ); then
     info "Detected bibtex in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/} will be run thrice"
+    ${LaTeX##*/}/${PDFLaTeX##*/}/${XeLaTeX##*/} will be run thrice"
     BIBTEX=1
     sleep "$SLEEP_TIME"
 elif bibliography_is_present "$filename" || \
     ( [[ "$INOTIFYFILES" = "*.tex" ]] && bibliography_is_present "*.tex" \
     ); then
     info "Detected bibliography in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/} will be run thrice"
+    ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run thrice"
     BIBLIOGRAPHY=1
     sleep "$SLEEP_TIME"
 fi
@@ -1468,8 +1468,8 @@ fi
 if index_is_present "$filename"|| ( [[ "$INOTIFYFILES" = "*.tex" ]] && \
     index_is_present "*.tex" ); then
     info "Detected index in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/} will be run once, then makeindex will be run,
-    then ${LaTeX##*/}/${PDFLaTeX##*/} will be run two more times"
+    ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run once, then makeindex will be run,
+    then ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run two more times"
     INDEX=1
     sleep "$SLEEP_TIME"
 fi
