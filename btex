@@ -947,6 +947,7 @@ compile() {
             success $?;;
         PDF_POSTSCRIPT) compile_ps
             compile_pdf;;
+        XELATEX) compile_xelatex;;
         *)  die "$1: Invalid mode.";;
     esac
 }
@@ -1014,6 +1015,40 @@ compile_ps() {
                 Err "Errors and Warnings from ${green}dvips$normal:\n$e" ;;
         *) ;; # Do nothing
     esac
+}
+
+# Usage: compile_xelatex
+compile_xelatex() {
+    local -i num_newer_eps=0
+    local -i counter=0
+    local f
+    while read f; do
+        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
+            ((num_newer_eps++))
+        fi
+    done < <(find *.eps 2>/dev/null)
+    [[ $num_newer_eps -gt 0 ]] &&
+        info "Converting $num_newer_eps (newer) eps images to pdf ..."
+    while read f; do
+        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
+            ((counter++))
+            infon "Converting [$counter/$num_newer_eps] ${bold}$f${normal} to ${bold}${f%\.*}.pdf${normal} ... "
+            # -dEPSCrop crops to figure. /prepress embeds fonts
+            ps2pdf -dPDFSETTINGS=/prepress -dEPSCrop "$f"
+            success $?
+        fi
+    done < <(find *.eps 2>/dev/null)
+    run_xelatex "1st" || return
+    if [[ "$BIBTEX" || "$INDEX" ]]; then
+        [[ "$BIBTEX" ]]     && run_bibtex
+        [[ "$INDEX" ]]      && run_index
+        run_xelatex "2nd"  && run_xelatex "3rd"
+    elif [[ "$BIBLIOGRAPHY" || "$INDEX" ]]; then
+        # If it has come till here, then xelatex ran ok earlier
+        # So, we don't need to return on error
+        [[ "$INDEX" ]]      && run_index
+        run_xelatex "2nd"; run_xelatex "3rd"
+    fi
 }
 
 # Whether index is to be generated or not.
@@ -1155,6 +1190,11 @@ run_pdflatex() {
     else
         return "$status"
     fi
+}
+
+# Function to run xelatex in the future
+run_xelatex() {
+    echo "Pretending to run xelatex..."
 }
 
 # Function to make inverse search work between xdvi and editor (gvim)
