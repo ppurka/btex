@@ -1192,9 +1192,13 @@ run_pdflatex() {
     return $?
 }
 
-# Function to run xelatex in the future
+# Run the xelatex command. This accepts an additional parameter which is
+# the run that is being performed. This parameter will be displayed in o/p.
+# Usage: run_xelatex "<1st|2nd|3rd>"
 run_xelatex() {
-    echo "Pretending to run xelatex..."
+    infor "$cyan$1$normal run of $XeLaTeX"
+    run_pdf_family_compiler "$XeLaTeX" "$XeLaTeX_Opts"
+    return $?
 }
 
 # Function to make inverse search work between xdvi and editor (gvim)
