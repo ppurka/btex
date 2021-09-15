@@ -5,8 +5,14 @@
         #-----------------------------------------------------------#
 
         #----------------- License: GPL-3 or later -----------------#
-        # Copyright (C) 2007 - 2019  P. Purkayastha                 #
-        # Contact: ppurka _at_ gmail _dot_ com                      #
+        # Copyright (C) 2007 - 2021, the Authors                    #
+        #                                                           #
+        # Authors: P. Purkayastha                                   #
+        #          Contact: ppurka _at_ gmail _dot_ com             #
+        #                                                           #
+        #          R. Siejakowski                                   #
+        #          Contact: <rs@rs-math.net>                        #
+        #                                                           #
         # This program comes with ABSOLUTELY NO WARRANTY;           #
         # This is free software, and you are welcome to redistribute#
         # it under certain conditions;                              #
