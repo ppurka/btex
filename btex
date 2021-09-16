@@ -5,8 +5,14 @@
         #-----------------------------------------------------------#
 
         #----------------- License: GPL-3 or later -----------------#
-        # Copyright (C) 2007 - 2019  P. Purkayastha                 #
-        # Contact: ppurka _at_ gmail _dot_ com                      #
+        # Copyright (C) 2007 - 2021, the Authors                    #
+        #                                                           #
+        # Authors: P. Purkayastha                                   #
+        #          Contact: ppurka _at_ gmail _dot_ com             #
+        #                                                           #
+        #          R. Siejakowski                                   #
+        #          Contact: <rs@rs-math.net>                        #
+        #                                                           #
         # This program comes with ABSOLUTELY NO WARRANTY;           #
         # This is free software, and you are welcome to redistribute#
         # it under certain conditions;                              #
@@ -19,6 +25,9 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 15/09/2021    Add support for xelatex, when MODE is set to#
+        #               "XELATEX", triggered by the new command line#
+        #               switches -x and --xelatex.                  #
         # 02/02/2919    After invalid keypress in interactive mode, #
         #               return to menu instead of exiting.          #
         # 02/02/2019    Re-enable Ctrl-C behavior with autocompile  #
@@ -345,6 +354,7 @@ help() {
                           separately, and the last filename provided in -W
                           is not in a separate directory, then that will be
                           considered as the main latex file to compile.
+    -x, --xelatex         Output a PDF file using $XeLaTeX.
     -z, --stop            Exit script if $LaTeX gives errors
     --acroread            Use acrobat reader as pdf viewer in lieu of the
                           default set in the config file
@@ -536,6 +546,12 @@ parse_cmdline() {
         [[ $(( ${SILENT}%5 )) -eq 0 ]] || SILENT=$(( ${SILENT}*5 ))
     fi
 
+    # Check for -x embedded in the command
+    if [[ "$cmd" =~ [a-np-zA-Z0-9]*x{1}.* ]]; then
+        cmd="${cmd/x}"
+        MODE="XELATEX"
+    fi
+
     # Check for -z embedded in the command
     if [[ "$cmd" =~ [a-yA-Z0-9]*z{1}.* ]]; then
         cmd="${cmd/z}"
@@ -602,16 +618,19 @@ setup_config_file() {
 # DVI_VIEWER_OPTIONS="-watchfile 1"
 #
 # Default programs, first one is for ps, second is for pdf
-# Default is LaTeX=latex and PDFLaTeX=pdflatex.
+# Default is LaTeX=latex, PDFLaTeX=pdflatex and XeLaTeX=xelatex.
 # LaTeX=latex
 # PDFLaTeX=pdflatex
+# XeLaTeX=xelatex
 #
-# Extra options used by LaTeX and PDFLaTeX. Default is empty.
+# Extra options used by LaTeX, PDFLaTeX and XeLaTeX. Default is empty.
 # LaTeX_Opts=""
 # PDFLaTeX_Opts=""
+# XeLaTeX_Opts=""
 # Suggested Options:
 # LaTeX_Opts="-file-line-error"
 # PDFLaTeX_Opts="-file-line-error"
+# XeLaTeX_Opts="-file-line-error"
 #
 # Paper type used in creating ps from dvi. This is used by dvips
 # Valid options are a3, a4, landscape, ledger, legal, letter.
@@ -663,6 +682,7 @@ setup_config_file() {
 #   NO_POSTSCRIPT:  Only DVI is generated
 #   PDF:            PDF is generated using pdflatex
 #   PDF_POSTSCRIPT: PDF is generated using pdflatex && PS is generated
+#   XELATEX:        PDF is generated using xelatex
 #   Default is NO_POSTSCRIPT
 # MODE="NO_POSTSCRIPT"
 END
@@ -686,6 +706,7 @@ fi
 [[ "$PS_VIEWER"  ]] && check "$PS_VIEWER"  die PS_VIEWER
 : ${LaTeX:=latex}
 : ${PDFLaTeX:=pdflatex}
+: ${XeLaTeX:=xelatex}
 : ${PAPER:=letter}
 : ${INOTIFY_DELAY:=0.5}
 : ${POLLED_AUTOCOMPILE:=0}
@@ -762,6 +783,7 @@ until [[ -z "$1" ]]; do
     -w | --no-warning)  [[ $(( ${SILENT}%5 )) -eq 0 ]] || \
         SILENT=$(( ${SILENT}*5 )) ;;
     -W | --watch-files) WATCH_FILE=1 ;;
+    -x | --xelatex)     MODE="XELATEX" ;;
     -z | --stop)        unset NON_STOP ;;
     -*=*) _var_="$1"
 		shift
@@ -937,31 +959,14 @@ compile() {
             success $?;;
         PDF_POSTSCRIPT) compile_ps
             compile_pdf;;
+        XELATEX) compile_xelatex;;
         *)  die "$1: Invalid mode.";;
     esac
 }
 
 # Usage: compile_pdf
 compile_pdf() {
-    local -i num_newer_eps=0
-    local -i counter=0
-    local f
-    while read f; do
-        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
-            ((num_newer_eps++))
-        fi
-    done < <(find *.eps 2>/dev/null)
-    [[ $num_newer_eps -gt 0 ]] &&
-        info "Converting $num_newer_eps (newer) eps images to pdf ..."
-    while read f; do
-        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
-            ((counter++))
-            infon "Converting [$counter/$num_newer_eps] ${bold}$f${normal} to ${bold}${f%\.*}.pdf${normal} ... "
-            # -dEPSCrop crops to figure. /prepress embeds fonts
-            ps2pdf -dPDFSETTINGS=/prepress -dEPSCrop "$f"
-            success $?
-        fi
-    done < <(find *.eps 2>/dev/null)
+    convert_eps_figures_to_pdf
     run_pdflatex "1st" || return
     if [[ "$BIBTEX" || "$INDEX" ]]; then
         [[ "$BIBTEX" ]]     && run_bibtex
@@ -1004,6 +1009,46 @@ compile_ps() {
                 Err "Errors and Warnings from ${green}dvips$normal:\n$e" ;;
         *) ;; # Do nothing
     esac
+}
+
+# Usage: compile_xelatex
+compile_xelatex() {
+    convert_eps_figures_to_pdf
+    run_xelatex "1st" || return
+    if [[ "$BIBTEX" || "$INDEX" ]]; then
+        [[ "$BIBTEX" ]]     && run_bibtex
+        [[ "$INDEX" ]]      && run_index
+        run_xelatex "2nd"  && run_xelatex "3rd"
+    elif [[ "$BIBLIOGRAPHY" || "$INDEX" ]]; then
+        # If it has come till here, then xelatex ran ok earlier
+        # So, we don't need to return on error
+        [[ "$INDEX" ]]      && run_index
+        run_xelatex "2nd"; run_xelatex "3rd"
+    fi
+}
+
+# If new *.eps figures are present, convert them to pdf before running either
+# pdflatex or xelatex
+convert_eps_figures_to_pdf() {
+    local -i num_newer_eps=0
+    local -i counter=0
+    local f
+    while read f; do
+        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
+            ((num_newer_eps++))
+        fi
+    done < <(find *.eps 2>/dev/null)
+    [[ $num_newer_eps -gt 0 ]] &&
+        info "Converting $num_newer_eps (newer) eps images to pdf ..."
+    while read f; do
+        if [[ ! -e "${f%\.*}.pdf" || "${f%\.*}.pdf" -ot "$f" ]]; then
+            ((counter++))
+            infon "Converting [$counter/$num_newer_eps] ${bold}$f${normal} to ${bold}${f%\.*}.pdf${normal} ... "
+            # -dEPSCrop crops to figure. /prepress embeds fonts
+            ps2pdf -dPDFSETTINGS=/prepress -dEPSCrop "$f"
+            success $?
+        fi
+    done < <(find *.eps 2>/dev/null)
 }
 
 # Whether index is to be generated or not.
@@ -1098,53 +1143,71 @@ run_latex() {
     fi
 }
 
-# Run the pdflatex command. This accepts an additional parameter which is
-# the run that is being performed. This parameter will be displayed in o/p.
-# Usage: run_pdflatex "<1st|2nd|3rd>"
-run_pdflatex() {
+# Runs pdflatex or another executable which is a drop-in replacement for
+# pdflatex (for example xelatex) as far as the command line options.
+# Takes two arguments: $1 = executable to run,
+#                      $2 = command line options for this executable.
+run_pdf_family_compiler() {
     local status
-    infor "$cyan$1$normal run of $LaTeX"
     case "$SILENT" in
-        30) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        30) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        10) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        10) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
-        15) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
+        15) $1 $2 $INVERSE_SEARCH "$filename" >&1 | \
             sed -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        6) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        6) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        2) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH \
+        2) $1 $2 $INVERSE_SEARCH \
             -interaction=nonstopmode "$filename" \
             >&1 | sed -e "/Warning/,/^$/s/\(.*\)/$pink\1$normal/" \
                 -e "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/" \
                 -e "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/"
             status="${PIPESTATUS[0]}";;
-        3) $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename" >&1 | \
+        3) $1 $2 $INVERSE_SEARCH "$filename" >&1 | \
             sed -ne "/Warning/,/^$/s/\(.*\)/$pink\1$normal/p" \
                 -ne "/^[!?]/,/^$/s/\(.*\)/$red\1$normal/p" \
                 -ne "/.*\.tex:[0-9]\+:/,/^$/s/\(.*\)/$red\1$normal/p"
             status="${PIPESTATUS[0]}";;
-        *)  $PDFLaTeX $PDFLaTeX_Opts $INVERSE_SEARCH "$filename"
+        *)  $1 $2 $INVERSE_SEARCH "$filename"
             status=$? ;;
     esac
 
     if [[ "$status" -ne 0 && -z "$NON_STOP" ]]; then
-        die "${filename}: $PDFLaTeX compilation failed"
+        die "${filename}: $1 compilation failed"
     else
         return "$status"
     fi
+}
+
+# Run the pdflatex command. This accepts an additional parameter which is
+# the run that is being performed. This parameter will be displayed in o/p.
+# Usage: run_pdflatex "<1st|2nd|3rd>"
+run_pdflatex() {
+    infor "$cyan$1$normal run of $PDFLaTeX"
+    run_pdf_family_compiler "$PDFLaTeX" "$PDFLaTeX_Opts"
+    return $?
+}
+
+# Run the xelatex command. This accepts an additional parameter which is
+# the run that is being performed. This parameter will be displayed in o/p.
+# Usage: run_xelatex "<1st|2nd|3rd>"
+run_xelatex() {
+    infor "$cyan$1$normal run of $XeLaTeX"
+    run_pdf_family_compiler "$XeLaTeX" "$XeLaTeX_Opts"
+    return $?
 }
 
 # Function to make inverse search work between xdvi and editor (gvim)
@@ -1264,6 +1327,7 @@ show_menu() {
         PS2PDF)         echo -e "\tPDF file is generated from PS, using ps2pdf";;
         PDF)            echo -e "\tPDF file is generated using $PDFLaTeX";;
         PDF_POSTSCRIPT) echo -e "\tPS file + PDF file generated via $PDFLaTeX";;
+        XELATEX)        echo -e "\tPDF file is generated using $XeLaTeX";;
         *)              die "$MODE: Invalid mode.";;
     esac
     case "$SILENT" in
@@ -1342,7 +1406,7 @@ success() {
 [[ "$pdf_viewer" != "$PDF_VIEWER" ]] && PDF_VIEWER_OPTIONS=
 
 # Some error checking is done here. But no checks on MODE are done later on
-# in the menu. So, it is possible that the script fails of a mode is chosen
+# in the menu. So, it is possible that the script fails if a mode is chosen
 # from the menu but the commands required for that mode are not present
 check "$LaTeX"
 [[ "$MODE" = *POSTSCRIPT ]]  && check dvips                         &&
@@ -1350,6 +1414,7 @@ check "$LaTeX"
 [[ "$MODE" = "PS2PDF"    ]]  && check dvips       && check ps2pdf   &&
                                 check_dvips_paper_options "$PAPER"
 [[ "$MODE" = "PDF"       ]]  && check "$PDFLaTeX" && check ps2pdf
+[[ "$MODE" = "XELATEX"   ]]  && check "$XeLaTeX" && check ps2pdf
 # Ensure that warnings are enabled only when either non-interaction or
 # silent has been enabled.
 [[ "$SILENT" -eq 5 ]] && {
@@ -1397,14 +1462,14 @@ fi
 if bibtex_is_present "$filename" || \
     (  [[ "$INOTIFYFILES" = "*.tex" ]] && bibtex_is_present "*.tex" ); then
     info "Detected bibtex in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/} will be run thrice"
+    ${LaTeX##*/}/${PDFLaTeX##*/}/${XeLaTeX##*/} will be run thrice"
     BIBTEX=1
     sleep "$SLEEP_TIME"
 elif bibliography_is_present "$filename" || \
     ( [[ "$INOTIFYFILES" = "*.tex" ]] && bibliography_is_present "*.tex" \
     ); then
     info "Detected bibliography in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/} will be run thrice"
+    ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run thrice"
     BIBLIOGRAPHY=1
     sleep "$SLEEP_TIME"
 fi
@@ -1412,8 +1477,8 @@ fi
 if index_is_present "$filename"|| ( [[ "$INOTIFYFILES" = "*.tex" ]] && \
     index_is_present "*.tex" ); then
     info "Detected index in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/} will be run once, then makeindex will be run,
-    then ${LaTeX##*/}/${PDFLaTeX##*/} will be run two more times"
+    ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run once, then makeindex will be run,
+    then ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run two more times"
     INDEX=1
     sleep "$SLEEP_TIME"
 fi
