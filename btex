@@ -547,7 +547,7 @@ parse_cmdline() {
     fi
 
     # Check for -x embedded in the command
-    if [[ "$cmd" =~ [a-np-zA-Z0-9]*x{1}.* ]]; then
+    if [[ "$cmd" =~ [a-wyzA-Z0-9]*x{1}.* ]]; then
         cmd="${cmd/x}"
         MODE="XELATEX"
     fi
