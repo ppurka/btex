@@ -1469,7 +1469,7 @@ elif bibliography_is_present "$filename" || \
     ( [[ "$INOTIFYFILES" = "*.tex" ]] && bibliography_is_present "*.tex" \
     ); then
     info "Detected bibliography in $filename.
-    ${LaTeX##*/}/${PDFLaTeX##*/}}/${XeLaTeX##*/} will be run thrice"
+    ${LaTeX##*/}/${PDFLaTeX##*/}/${XeLaTeX##*/} will be run thrice"
     BIBLIOGRAPHY=1
     sleep "$SLEEP_TIME"
 fi
