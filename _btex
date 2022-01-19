@@ -13,8 +13,8 @@ fi
 local_options=(
     '(   -d -n -o -p -x --ps2pdf --pdf --no-postscript --pdf_ps --postscript --xelatex)-2[Generate pdf from postscript output]'
     '(-2 -d -n -o -p -x          --pdf --no-postscript --pdf_ps --postscript --xelatex)--ps2pdf[Generate pdf from postscript output]'
-    '(-2    -n -o -p -x --ps2pdf --pdf --no-postscript --pdf_ps --postscript --xelatex)-d[Output a pdf file,- this uses pdflatex]'
-    '(-2 -d -n -o -p -x --ps2pdf       --no-postscript --pdf_ps --postscript --xelatex)--pdf[Output a pdf file,- this uses pdflatex]'
+    '(-2    -n -o -p -x --ps2pdf --pdf --no-postscript --pdf_ps --postscript --xelatex)-d[Output a pdf file using pdflatex]'
+    '(-2 -d -n -o -p -x --ps2pdf       --no-postscript --pdf_ps --postscript --xelatex)--pdf[Output a pdf file using pdflatex]'
     '(-2 -d    -o -p -x --ps2pdf --pdf --no-postscript --pdf_ps --postscript --xelatex)-n[Output only dvi file]'
     '(-2 -d -n -o -p -x --ps2pdf --pdf                 --pdf_ps --postscript --xelatex)--no-postscript[Output only dvi file]'
     '(-2 -d -n    -p -x --ps2pdf --pdf --no-postscript --pdf_ps --postscript --xelatex)-o[Generate ps automatically and also pdf via pdflatex]'
