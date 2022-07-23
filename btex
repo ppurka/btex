@@ -810,7 +810,7 @@ unset NUM_SHIFTS
 autocompile() {
     local clr="$(tput el)"
     local MODE="${1}"
-    local e="close_write,modify,move_self"
+    local e="close_write,delete_self,modify,move_self"
     local -i i=1
     [[ "$INOTIFYFILES" ]] || INOTIFYFILES="$filename"
     # Set the trap command
