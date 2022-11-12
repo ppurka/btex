@@ -25,6 +25,7 @@
         #-----------------------------------------------------------#
 
         ### MM/DD/YYYY            Changelog                       ###
+        # 11/12/2022    Fixes for warnings issued in grep-3.8       #
         # 15/09/2021    Add support for xelatex, when MODE is set to#
         #               "XELATEX", triggered by the new command line#
         #               switches -x and --xelatex.                  #
@@ -1262,9 +1263,9 @@ set_xdvi() {
             local server
             ps -u "$USER" -o command | grep -vw "grep" | \
                 grep -E "[/]?${_editor}"  > "$TMP_FILE"
-            if grep "$filename" "$TMP_FILE" | grep -q "\-\-servername"; then
+            if grep "$filename" "$TMP_FILE" | grep -q -e '--servername'; then
                 server="$(grep -E \
-                "($filename\ .*\-\-servername|\-\-servername\ .*$filename)" \
+                "($filename .*--servername|--servername .*$filename)" \
                 "$TMP_FILE" | sed -ne \
                 "s@^.*\-\-servername[[:space:]]\+\([[:alnum:]]*\) .*@\1@p")"
             elif grep -q "$filename" "$TMP_FILE"; then
@@ -1450,7 +1451,7 @@ file="${filename%\.tex}"
 
 # Autodetect beamer mode
 if [[ "$DVIPS_PAPER_OPTIONS" ]] && \
-    grep -q -s "[ ]*\\documentclass.*beamer" "$filename"; then
+    grep -q -s '[ ]*\\documentclass.*beamer' "$filename"; then
     info "Detected beamer: enabling beamer mode"
     set_beamer_options
     sleep "$SLEEP_TIME"
@@ -1500,7 +1501,7 @@ fi
 
 
 # Determine if the (pdf)latex has -src-specials command line option
-if $LaTeX -help | grep -q "^-src-specials"; then
+if $LaTeX -help | grep -q '^-src-specials'; then
     INVERSE_SEARCH_CAPABLE=1
     [[ "$INVERSE_SEARCH" ]] && set_xdvi
 fi
